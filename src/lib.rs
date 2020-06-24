@@ -473,6 +473,7 @@ macro_rules! fatal {
 mod config;
 mod errors;
 mod log_unstable;
+mod quorum;
 #[cfg(test)]
 pub mod raft;
 #[cfg(not(test))]
