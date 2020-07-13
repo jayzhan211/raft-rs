@@ -332,7 +332,7 @@ fn test_majority_commit_single_group() {
         (vec![1, 2, 3, 4, 5], vec![0, 101, 103, 103, 104], 103),
         (vec![1, 2, 3, 4, 5], vec![101, 102, 103, 103, 0], 102),
     ];
-    for (i, (cfg, idx, expected_index)) in test_cases.drain(..).enumerate() {
+    for (tc, (cfg, idx, expected_index)) in test_cases.drain(..).enumerate() {
         let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
         let c = MajorityConfig::new(cfg_set.clone());
 
@@ -344,7 +344,7 @@ fn test_majority_commit_single_group() {
             voters.len(),
             idx.len(),
             "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
-            i + 1,
+            tc + 1,
             voters,
             idx
         );
@@ -399,7 +399,7 @@ fn test_majority_commit_single_group() {
             index1,
             index2,
             "[test_cases #{}] alternative computation fails",
-            i + 1
+            tc + 1
         );
 
         // Joining a majority with the empty majority should give same result.
@@ -409,17 +409,17 @@ fn test_majority_commit_single_group() {
             index1,
             index2,
             "[test_cases #{}] zero-joint quorum fails",
-            i + 1
+            tc + 1
         );
 
         // Joining a majority with itself should give same result.
-        let cc = JointConfig::new_joint(c.clone(), MajorityConfig::default());
+        let cc = JointConfig::new_joint(c.clone(), c.clone());
         let index2 = cc.committed_index(false, &l).0;
         assert_eq!(
             index1,
             index2,
             "[test_cases #{}] self-joint quorum fails",
-            i + 1
+            tc + 1
         );
 
         // overlaying
@@ -441,7 +441,7 @@ fn test_majority_commit_single_group() {
                     index1,
                     index2,
                     "[test_cases #{}] overlaying case 1 fails",
-                    i + 1
+                    tc + 1
                 );
 
                 // case2: set idx[i] => 0
@@ -459,7 +459,7 @@ fn test_majority_commit_single_group() {
                     index1,
                     index2,
                     "[test_cases #{}] overlaying case 2 fails",
-                    i + 1
+                    tc + 1
                 );
 
                 // recover
@@ -477,7 +477,7 @@ fn test_majority_commit_single_group() {
             index1,
             expected_index,
             "[test_cases #{}] index does not match expected value",
-            i + 1
+            tc + 1
         )
     }
 }
@@ -575,10 +575,618 @@ fn test_majority_vote() {
 
 #[test]
 fn test_joint_commit_multi_group() {
-    assert_eq!(2, 1 + 1);
+    let mut test_cases = vec![
+        (vec![], vec![], vec![], vec![], u64::MAX, true),
+        (
+            vec![1, 2, 3],
+            vec![],
+            vec![77, 88, 99],
+            vec![1, 1, 1],
+            88,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![],
+            vec![77, 88, 99],
+            vec![1, 1, 2],
+            88,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![],
+            vec![77, 88, 99],
+            vec![2, 1, 1],
+            77,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![],
+            vec![77, 88, 99],
+            vec![0, 1, 1],
+            77,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![],
+            vec![77, 88, 99],
+            vec![0, 1, 2],
+            88,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![],
+            vec![77, 88, 99],
+            vec![1, 2, 0],
+            77,
+            true,
+        ),
+        (vec![1], vec![2], vec![7, 8], vec![1, 2], 7, false),
+        (vec![1], vec![2], vec![7, 8], vec![1, 1], 7, false),
+        (vec![1], vec![2], vec![7, 8], vec![1, 0], 7, false),
+        //
+        // test_cases: 11
+        (vec![1, 2], vec![3], vec![7, 8, 9], vec![1, 1, 1], 7, false),
+        (vec![1, 2], vec![3], vec![7, 8, 9], vec![1, 1, 2], 7, false),
+        (vec![1, 2], vec![3], vec![7, 8, 9], vec![1, 2, 1], 7, false),
+        (
+            vec![1, 2],
+            vec![3],
+            vec![77, 88, 9],
+            vec![1, 1, 1],
+            9,
+            false,
+        ),
+        (
+            vec![1, 2],
+            vec![3],
+            vec![77, 88, 9],
+            vec![0, 1, 1],
+            9,
+            false,
+        ),
+        (
+            vec![1, 2],
+            vec![3],
+            vec![77, 88, 79],
+            vec![0, 1, 1],
+            77,
+            false,
+        ),
+        (vec![1, 2], vec![2], vec![4, 5], vec![1, 1], 4, false),
+        (vec![1, 2], vec![2], vec![4, 5], vec![1, 2], 4, false),
+        (vec![1, 2], vec![2], vec![44, 5], vec![1, 2], 5, false),
+        (vec![1, 2], vec![2], vec![4, 5], vec![1, 0], 4, false),
+        //
+        // test_cases: 21
+        (
+            vec![1, 2],
+            vec![3, 4],
+            vec![1, 2, 3, 4],
+            vec![1, 1, 1, 1],
+            1,
+            false,
+        ),
+        (
+            vec![1, 2],
+            vec![3, 4],
+            vec![1, 2, 3, 4],
+            vec![1, 1, 1, 2],
+            1,
+            false,
+        ),
+        (
+            vec![1, 2],
+            vec![3, 4],
+            vec![3, 4, 3, 4],
+            vec![1, 1, 1, 2],
+            3,
+            false,
+        ),
+        (
+            vec![1, 2],
+            vec![3, 4],
+            vec![3, 4, 3, 4],
+            vec![2, 1, 1, 2],
+            3,
+            true,
+        ),
+        (
+            vec![1, 2],
+            vec![3, 4],
+            vec![3, 4, 33, 44],
+            vec![2, 1, 1, 2],
+            3,
+            true,
+        ),
+        (
+            vec![1, 2],
+            vec![3, 4],
+            vec![3, 4, 33, 44],
+            vec![0, 1, 1, 2],
+            3,
+            false,
+        ),
+        (
+            vec![1, 2],
+            vec![3, 4],
+            vec![3, 4, 33, 44],
+            vec![1, 1, 2, 2],
+            3,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 4, 5, 6, 7],
+            vec![1, 1, 1, 1, 1],
+            4,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 44, 55, 6, 7],
+            vec![1, 1, 1, 1, 1],
+            7,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 44, 55, 6, 7],
+            vec![1, 1, 1, 1, 2],
+            7,
+            false,
+        ),
+        //
+        // test_cases: 31
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 44, 55, 6, 7],
+            vec![1, 1, 2, 1, 2],
+            6,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 44, 55, 6, 7],
+            vec![0, 1, 2, 1, 2],
+            6,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 44, 55, 6, 7],
+            vec![1, 0, 2, 1, 2],
+            3,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 44, 55, 6, 7],
+            vec![1, 2, 0, 1, 2],
+            3,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 44, 5, 66, 7],
+            vec![1, 2, 0, 1, 2],
+            3,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![3, 4, 5],
+            vec![3, 44, 5, 66, 7],
+            vec![1, 1, 0, 2, 2],
+            3,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![2, 3, 4],
+            vec![3, 4, 5, 6],
+            vec![1, 1, 1, 1],
+            4,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![2, 3, 4],
+            vec![3, 4, 5, 6],
+            vec![1, 2, 1, 1],
+            4,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![2, 3, 4],
+            vec![3, 4, 5, 6],
+            vec![1, 2, 2, 1],
+            3,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![2, 3, 4],
+            vec![3, 4, 5, 6],
+            vec![1, 2, 2, 2],
+            3,
+            false,
+        ),
+        //
+        // test_cases: 41
+        (
+            vec![1, 2, 3],
+            vec![2, 3, 4],
+            vec![3, 4, 5, 6],
+            vec![2, 1, 0, 2],
+            3,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![2, 3, 4],
+            vec![3, 4, 5, 6],
+            vec![1, 1, 0, 2],
+            3,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![1, 1, 1, 1, 1, 1],
+            2,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![11, 22, 33, 4, 5, 6],
+            vec![1, 1, 1, 1, 1, 1],
+            5,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![11, 2, 33, 4, 55, 6],
+            vec![1, 1, 1, 1, 1, 1],
+            6,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![1, 1, 1, 2, 2, 2],
+            2,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![1, 1, 1, 1, 1, 2],
+            2,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![1, 1, 2, 1, 1, 2],
+            2,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![1, 1, 2, 1, 1, 0],
+            2,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![1, 1, 0, 1, 1, 2],
+            1,
+            false,
+        ),
+        //
+        // test_cases: 51
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![0, 1, 2, 0, 1, 2],
+            2,
+            true,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![0, 1, 2, 0, 1, 1],
+            2,
+            false,
+        ),
+        (
+            vec![1, 2, 3],
+            vec![4, 5, 6],
+            vec![1, 2, 3, 4, 5, 6],
+            vec![0, 1, 1, 0, 1, 2],
+            1,
+            false,
+        ),
+    ];
+
+    for (i, (cfg, cfgj, idx, group_ids, expected_index, expected_use_group_commit)) in
+        test_cases.drain(..).enumerate()
+    {
+        let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
+        let cfgj_set: HashSet<_> = cfgj.iter().cloned().collect::<HashSet<_>>();
+
+        let c = MajorityConfig::new(cfg_set);
+        let cj = MajorityConfig::new(cfgj_set);
+
+        let mut voters = vec![];
+        voters.extend_from_slice(&cfg);
+        voters.extend_from_slice(&cfgj);
+        let s: std::collections::HashSet<_> = voters.drain(..).collect();
+        voters.extend(s.into_iter());
+        voters.sort();
+
+        assert_eq!(
+            voters.len(),
+            idx.len(),
+            "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
+            i + 1,
+            voters,
+            idx
+        );
+
+        let mut l: AckIndexer = AckIndexer::default();
+
+        for (i, id) in voters.drain(..).enumerate() {
+            l.insert(
+                id,
+                Index {
+                    index: idx[i],
+                    group_id: group_ids[i],
+                },
+            );
+        }
+
+        let (index1, use_group_commit1) =
+            JointConfig::new_joint(c.clone(), cj.clone()).committed_index(true, &l);
+        let (index2, use_group_commit2) = JointConfig::new_joint(cj, c).committed_index(true, &l);
+
+        assert_eq!(index1, index2, "[test_cases #{}] Interchanging the majorities shouldn't make a difference. If it does, print.", i+1);
+        assert_eq!(use_group_commit1, use_group_commit2, "[test_cases #{}] Interchanging the majorities shouldn't make a difference. If it does, print.", i+1);
+
+        assert_eq!(
+            index1,
+            expected_index,
+            "[test_cases #{}] index does not match expected value",
+            i + 1
+        );
+        assert_eq!(
+            use_group_commit1,
+            expected_use_group_commit,
+            "[test_cases #{}] index is not computed by group commit",
+            i + 1
+        );
+    }
 }
 
 #[test]
 fn test_majority_commit_multi_group() {
-    assert_eq!(2, 1 + 1);
+    let mut test_cases = vec![
+        // [1] The empty quorum commits "everything". This is useful for its use in joint quorums.
+        (vec![], vec![], vec![], u64::MAX, true),
+        // [2] A single voter quorum is not final when no index is known.
+        (vec![1], vec![0], vec![0], 0, false),
+        (vec![1], vec![0], vec![1], 0, false),
+        // [3] When an index is known, that's the committed index, and that's final.
+        (vec![1], vec![2], vec![1], 2, false),
+        // [4] With two nodes, start out similarly.
+        (vec![1, 2], vec![1, 1], vec![1, 1], 1, false),
+        (vec![1, 2], vec![2, 3], vec![1, 1], 2, false),
+        (vec![1, 2], vec![2, 3], vec![1, 2], 2, true),
+        // [5] 3 nodes
+        (vec![1, 2, 3], vec![2, 3, 4], vec![1, 1, 1], 3, false),
+        (vec![1, 2, 3], vec![2, 3, 4], vec![1, 1, 0], 2, false),
+        (vec![1, 2, 3], vec![2, 3, 4], vec![2, 1, 1], 2, true),
+        (vec![1, 2, 3], vec![2, 3, 4], vec![2, 2, 1], 3, true),
+        //
+        // test_cases: 11
+        (vec![1, 2, 3], vec![2, 3, 4], vec![2, 2, 0], 2, false),
+        // [6] 5 nodes
+        (
+            vec![1, 2, 3, 4, 5],
+            vec![2, 3, 4, 22, 33],
+            vec![1, 1, 1, 1, 1],
+            4,
+            false,
+        ),
+        (
+            vec![1, 2, 3, 4, 5],
+            vec![2, 3, 4, 22, 33],
+            vec![1, 1, 2, 1, 1],
+            4,
+            true,
+        ),
+        (
+            vec![1, 2, 3, 4, 5],
+            vec![2, 3, 4, 22, 33],
+            vec![1, 1, 1, 2, 1],
+            4,
+            true,
+        ),
+        (
+            vec![1, 2, 3, 4, 5],
+            vec![2, 3, 4, 22, 33],
+            vec![1, 2, 1, 2, 1],
+            4,
+            true,
+        ),
+        (
+            vec![1, 2, 3, 4, 5],
+            vec![2, 3, 4, 22, 33],
+            vec![1, 2, 1, 0, 1],
+            3,
+            true,
+        ),
+        (
+            vec![1, 2, 3, 4, 5],
+            vec![2, 3, 4, 22, 33],
+            vec![1, 0, 1, 0, 1],
+            2,
+            false,
+        ),
+    ];
+    for (tc, (cfg, idx, group_ids, expected_index, expected_use_group_commit)) in
+        test_cases.drain(..).enumerate()
+    {
+        let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
+        let c = MajorityConfig::new(cfg_set.clone());
+
+        let mut voters = vec![];
+        voters.extend(cfg_set.into_iter());
+        voters.sort();
+
+        assert_eq!(
+            voters.len(),
+            idx.len(),
+            "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
+            tc + 1,
+            voters,
+            idx
+        );
+
+        let mut l: AckIndexer = AckIndexer::default();
+
+        for (i, &id) in voters.iter().enumerate() {
+            l.insert(
+                id,
+                Index {
+                    index: idx[i],
+                    group_id: group_ids[i],
+                },
+            );
+        }
+
+        let (index1, use_group_commit1) = c.clone().committed_index(true, &l);
+
+        // Joining a majority with the empty majority should give same result.
+        let cc = JointConfig::new_joint(c.clone(), MajorityConfig::default());
+        let (index2, use_group_commit2) = cc.committed_index(true, &l);
+        assert_eq!(
+            index1,
+            index2,
+            "[test_cases #{}] zero-joint quorum fails",
+            tc + 1
+        );
+        assert_eq!(
+            use_group_commit1,
+            use_group_commit2,
+            "[test_cases #{}] zero-joint quorum fails",
+            tc + 1
+        );
+
+        // Joining a majority with itself should give same result.
+        let cc = JointConfig::new_joint(c.clone(), c.clone());
+        let (index2, use_group_commit2) = cc.committed_index(true, &l);
+        assert_eq!(
+            index1,
+            index2,
+            "[test_cases #{}] self-joint quorum fails",
+            tc + 1
+        );
+        assert_eq!(
+            use_group_commit1,
+            use_group_commit2,
+            "[test_cases #{}] self-joint quorum fails",
+            tc + 1
+        );
+
+        // overlaying
+        // If the committed index was definitely above the currently inspected idx,
+        // the result shouldn't change if we lower it further
+        for (i, &id) in voters.iter().enumerate() {
+            if idx[i] < index1 && idx[i] > 0 {
+                // case1: set idx[i] => idx[i] - 1
+                l.insert(
+                    id,
+                    Index {
+                        index: idx[i] - 1,
+                        group_id: group_ids[i],
+                    },
+                );
+
+                let index2 = c.clone().committed_index(true, &l).0;
+                assert_eq!(
+                    index1,
+                    index2,
+                    "[test_cases #{}] overlaying case 1 fails",
+                    tc + 1
+                );
+
+                // case2: set idx[i] => 0
+
+                l.insert(
+                    id,
+                    Index {
+                        index: 0,
+                        group_id: group_ids[i],
+                    },
+                );
+
+                let index2 = c.clone().committed_index(true, &l).0;
+                assert_eq!(
+                    index1,
+                    index2,
+                    "[test_cases #{}] overlaying case 2 fails",
+                    tc + 1
+                );
+
+                // recover
+                l.insert(
+                    id,
+                    Index {
+                        index: idx[i],
+                        group_id: group_ids[i],
+                    },
+                );
+            }
+        }
+
+        assert_eq!(
+            index1,
+            expected_index,
+            "[test_cases #{}] index does not match expected value",
+            tc + 1
+        );
+        assert_eq!(
+            use_group_commit1,
+            expected_use_group_commit,
+            "[test_cases #{}] index is not computed by group commit",
+            tc + 1
+        );
+    }
 }
