@@ -21,9 +21,9 @@ pub enum VoteResult {
 /// Index is a Raft log position.
 #[derive(Default, Clone, Copy)]
 pub struct Index {
-    /// index of raft log
+    /// Raft log index
     pub index: u64,
-    /// raft group id
+    /// Raft log group id
     pub group_id: u64,
 }
 
@@ -49,8 +49,7 @@ pub trait AckedIndexer {
     fn acked_index(&self, voter_id: u64) -> Option<Index>;
 }
 
-// TODO: add Doc
-/// AckIndexer
+/// HashMap for looking up a commit index for a given ID of a voter from a corresponding MajorityConfig.
 pub type AckIndexer = HashMap<u64, Index>;
 
 impl AckedIndexer for AckIndexer {
