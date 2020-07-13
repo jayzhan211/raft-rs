@@ -23,6 +23,11 @@ impl Configuration {
         }
     }
 
+    /// Creates a new configuration using two given ID sets.
+    pub fn new_joint(incoming: MajorityConfig, outgoing: MajorityConfig) -> Configuration {
+        Configuration { incoming, outgoing }
+    }
+
     /// Creates an empty configuration with given capacity.
     pub fn with_capacity(cap: usize) -> Configuration {
         Configuration {

@@ -493,6 +493,8 @@ pub use self::errors::{Error, Result, StorageError};
 pub use self::log_unstable::Unstable;
 pub use self::quorum::joint::Configuration as JointConfig;
 pub use self::quorum::majority::Configuration as MajorityConfig;
+pub use self::quorum::VoteResult;
+pub use self::quorum::{AckIndexer, Index};
 pub use self::raft::{vote_resp_msg_type, Raft, SoftState, StateRole, INVALID_ID, INVALID_INDEX};
 pub use self::raft_log::{RaftLog, NO_LIMIT};
 pub use self::tracker::{Inflights, Progress, ProgressState, ProgressTracker};
@@ -566,5 +568,7 @@ pub fn default_logger() -> slog::Logger {
 }
 
 type DefaultHashBuilder = std::hash::BuildHasherDefault<fxhash::FxHasher>;
-type HashMap<K, V> = std::collections::HashMap<K, V, DefaultHashBuilder>;
-type HashSet<K> = std::collections::HashSet<K, DefaultHashBuilder>;
+/// HashMap based on FxHasher
+pub type HashMap<K, V> = std::collections::HashMap<K, V, DefaultHashBuilder>;
+/// HashSet based on FxHasher
+pub type HashSet<K> = std::collections::HashSet<K, DefaultHashBuilder>;

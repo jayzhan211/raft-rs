@@ -12,16 +12,18 @@ pub enum VoteResult {
     /// Pending indicates that the decision of the vote depends on future
     /// votes, i.e. neither "yes" or "no" has reached quorum yet.
     Pending,
-    // Lost indicates that the quorum has voted "no".
+    /// Lost indicates that the quorum has voted "no".
     Lost,
-    // Won indicates that the quorum has voted "yes".
+    /// Won indicates that the quorum has voted "yes".
     Won,
 }
 
 /// Index is a Raft log position.
 #[derive(Default, Clone, Copy)]
 pub struct Index {
+    /// index of raft log
     pub index: u64,
+    /// raft group id
     pub group_id: u64,
 }
 
@@ -47,6 +49,8 @@ pub trait AckedIndexer {
     fn acked_index(&self, voter_id: u64) -> Option<Index>;
 }
 
+// TODO: add Doc
+/// AckIndexer
 pub type AckIndexer = HashMap<u64, Index>;
 
 impl AckedIndexer for AckIndexer {
