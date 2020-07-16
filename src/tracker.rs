@@ -104,6 +104,21 @@ impl Configuration {
         }
     }
 
+    pub fn new_conf(
+        incoming: Vec<u64>,
+        outgoing: Vec<u64>,
+        learners: Vec<u64>,
+        learners_next: Vec<u64>,
+        auto_leave: bool,
+    ) -> Self {
+        Self {
+            voters: JointConfig::new(incoming.into_iter().collect(), outgoing.into_iter().collect()),
+            learners: learners.into_iter().collect(),
+            learners_next: learners_next.into_iter().collect(),
+            auto_leave
+        }
+    }
+    
     fn with_capacity(voters: usize, learners: usize) -> Self {
         Self {
             voters: JointConfig::with_capacity(voters),
@@ -139,7 +154,7 @@ impl AckedIndexer for ProgressMap {
 
 /// `ProgressTracker` contains several `Progress`es,
 /// which could be `Leader`, `Follower` and `Learner`.
-#[derive(Clone, Getters)]
+#[derive(Clone, Getters, Debug)]
 pub struct ProgressTracker {
     progress: ProgressMap,
 

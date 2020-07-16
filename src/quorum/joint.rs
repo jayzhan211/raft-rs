@@ -23,6 +23,13 @@ impl Configuration {
         }
     }
 
+    pub fn new_joint(incoming: HashSet<u64>, outgoing: HashSet<u64>) -> Configuration {
+        Configuration {
+            incoming: MajorityConfig::new(incoming),
+            outgoing: MajorityConfig::new(outgoing),
+        }
+    }
+
     /// Creates an empty configuration with given capacity.
     pub fn with_capacity(cap: usize) -> Configuration {
         Configuration {

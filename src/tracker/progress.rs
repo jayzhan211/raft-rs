@@ -53,6 +53,9 @@ pub struct Progress {
 
     /// Committed index in raft_log
     pub committed_index: u64,
+
+    /// true if this progress is tracked for a learner.
+    pub is_learner: bool,
 }
 
 impl Progress {
@@ -69,6 +72,7 @@ impl Progress {
             ins: Inflights::new(ins_size),
             commit_group_id: 0,
             committed_index: 0,
+            is_learner: false,
         }
     }
 
