@@ -157,7 +157,7 @@ impl AckedIndexer for ProgressMap {
 
 /// `ProgressTracker` contains several `Progress`es,
 /// which could be `Leader`, `Follower` and `Learner`.
-#[derive(Clone, Getters, Debug)]
+#[derive(Clone, Getters)]
 pub struct ProgressTracker {
     progress: ProgressMap,
 

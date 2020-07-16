@@ -14,7 +14,6 @@ pub enum MapChangeType {
 /// Changes made by `Changer`.
 pub type MapChange = Vec<(u64, MapChangeType)>;
 
-#[derive(Debug)]
 /// A map that stores updates instead of apply them directly.
 pub struct IncrChangeMap<'a> {
     changes: MapChange,
@@ -35,7 +34,6 @@ impl IncrChangeMap<'_> {
     }
 }
 
-#[derive(Debug)]
 /// Changer facilitates configuration changes. It exposes methods to handle
 /// simple and joint consensus while performing the proper validation that allows
 /// refusing invalid configuration changes before they affect the active
