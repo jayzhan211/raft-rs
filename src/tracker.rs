@@ -128,13 +128,16 @@ impl Configuration {
         auto_leave: bool,
     ) -> Self {
         Self {
-            voters: JointConfig::new(incoming.into_iter().collect(), outgoing.into_iter().collect()),
+            voters: JointConfig::new_joint(
+                incoming.into_iter().collect(),
+                outgoing.into_iter().collect(),
+            ),
             learners: learners.into_iter().collect(),
             learners_next: learners_next.into_iter().collect(),
-            auto_leave
+            auto_leave,
         }
     }
-    
+
     fn with_capacity(voters: usize, learners: usize) -> Self {
         Self {
             voters: JointConfig::with_capacity(voters),

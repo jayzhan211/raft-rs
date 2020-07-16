@@ -72,10 +72,13 @@ impl Changer<'_> {
         ccs: &[ConfChangeSingle],
     ) -> Result<(Configuration, MapChange)> {
 <<<<<<< HEAD
+<<<<<<< HEAD
         if super::joint(self.tracker.conf()) {
 =======
 
 
+=======
+>>>>>>> add joint auotleave
         if joint(self.tracker.conf()) {
 >>>>>>> backup
             return Err(Error::ConfChangeError(
