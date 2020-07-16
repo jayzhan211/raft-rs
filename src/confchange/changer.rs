@@ -474,6 +474,388 @@ mod test {
                     "",
                 ),
             ],
+            // joint_learners_next
+            vec![
+                (
+                    Command::new(CommandType::Simple, "v1"),
+                    Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                    vec![(1, ProgressState::Probe, 0, 0)],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::EnterJoint, "v2 l1"),
+                    Configuration::new_conf(vec![2], vec![1], vec![], vec![1], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 1),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::LeaveJoint, ""),
+                    Configuration::new_conf(vec![2], vec![], vec![1], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 1),
+                    ],
+                    "",
+                ),
+            ],
+            // joint_safety
+            vec![
+                (
+                    Command::new(CommandType::LeaveJoint, ""),
+                    Configuration::default(),
+                    vec![],
+                    "can\'t leave a non-joint config",
+                ),
+                (
+                    Command::new(CommandType::EnterJoint, "v1"),
+                    Configuration::default(),
+                    vec![],
+                    "can\'t make a zero-voter config joint",
+                ),
+                (
+                    Command::new(CommandType::EnterJoint, "v1"),
+                    Configuration::default(),
+                    vec![],
+                    "can\'t make a zero-voter config joint",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v1"),
+                    Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                    vec![(1, ProgressState::Probe, 0, 3)],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::LeaveJoint, ""),
+                    Configuration::default(),
+                    vec![],
+                    "can\'t leave a non-joint config",
+                ),
+                (
+                    Command::new(CommandType::EnterJoint, ""),
+                    Configuration::new_conf(vec![1], vec![1], vec![], vec![], false),
+                    vec![(1, ProgressState::Probe, 0, 3)],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::EnterJoint, ""),
+                    Configuration::default(),
+                    vec![],
+                    "configuration is already joint",
+                ),
+                (
+                    Command::new(CommandType::LeaveJoint, ""),
+                    Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                    vec![(1, ProgressState::Probe, 0, 3)],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::LeaveJoint, ""),
+                    Configuration::default(),
+                    vec![],
+                    "can\'t leave a non-joint config",
+                ),
+                (
+                    Command::new(CommandType::EnterJoint, "r1 v2 v3 l4"),
+                    Configuration::new_conf(vec![2, 3], vec![1], vec![4], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 3),
+                        (2, ProgressState::Probe, 0, 9),
+                        (3, ProgressState::Probe, 0, 9),
+                        (4, ProgressState::Probe, 0, 9),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::EnterJoint, ""),
+                    Configuration::default(),
+                    vec![],
+                    "configuration is already joint",
+                ),
+                (
+                    Command::new(CommandType::EnterJoint, "v12"),
+                    Configuration::default(),
+                    vec![],
+                    "configuration is already joint",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l15"),
+                    Configuration::default(),
+                    vec![],
+                    "can\'t apply simple config change in joint config",
+                ),
+                (
+                    Command::new(CommandType::LeaveJoint, ""),
+                    Configuration::new_conf(vec![2, 3], vec![], vec![4], vec![], false),
+                    vec![
+                        (2, ProgressState::Probe, 0, 9),
+                        (3, ProgressState::Probe, 0, 9),
+                        (4, ProgressState::Probe, 0, 9),
+                    ],
+                    "can\'t leave a non-joint config",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l9"),
+                    Configuration::new_conf(vec![2, 3], vec![], vec![4,9], vec![], false),
+                    vec![
+                        (2, ProgressState::Probe, 0, 9),
+                        (3, ProgressState::Probe, 0, 9),
+                        (4, ProgressState::Probe, 0, 9),
+                        (9, ProgressState::Probe, 0, 14),
+                    ],
+                    "",
+                ),
+            ],
+            // simple_idempotency
+            vec![
+                (
+                    Command::new(CommandType::Simple, "v1"),
+                    Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v1"),
+                    Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v2"),
+                    Configuration::new_conf(vec![1, 2], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l1"),
+                    Configuration::new_conf(vec![2], vec![], vec![1], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l1"),
+                    Configuration::new_conf(vec![2], vec![], vec![1], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r1"),
+                    Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
+                    vec![
+                        (2, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r1"),
+                    Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
+                    vec![
+                        (2, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v3"),
+                    Configuration::new_conf(vec![2, 3], vec![], vec![], vec![], false),
+                    vec![
+                        (2, ProgressState::Probe, 0, 2),
+                        (3, ProgressState::Probe, 0, 7),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r3"),
+                    Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
+                    vec![
+                        (2, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r3"),
+                    Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
+                    vec![
+                        (2, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r4"),
+                    Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
+                    vec![
+                        (2, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+            ],
+            // simple_promote_demote
+            vec![
+                (
+                    Command::new(CommandType::Simple, "v1"),
+                    Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v2"),
+                    Configuration::new_conf(vec![1, 2], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 1),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v3"),
+                    Configuration::new_conf(vec![1, 2, 3], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 1),
+                        (3, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l1 v1"),
+                    Configuration::new_conf(vec![1, 2, 3], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 1),
+                        (3, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l2"),
+                    Configuration::new_conf(vec![1, 3], vec![], vec![2], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 1),
+                        (3, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v2 l2"),
+                    Configuration::new_conf(vec![1, 3], vec![], vec![2], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 1),
+                        (3, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v2"),
+                    Configuration::new_conf(vec![1, 2, 3], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 0),
+                        (2, ProgressState::Probe, 0, 1),
+                        (3, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+            ],
+            // simple safety
+            vec![
+                (
+                    Command::new(CommandType::Simple, "l1"),
+                    Configuration::default(),
+                    vec![],
+                    "removed all voters",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v1"),
+                    Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 1),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v2 l3"),
+                    Configuration::new_conf(vec![1, 2], vec![], vec![3], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 1),
+                        (2, ProgressState::Probe, 0, 2),
+                        (3, ProgressState::Probe, 0, 2),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r1 v5"),
+                    Configuration::default(),
+                    vec![],
+                    "more than one voter changed without entering joint config",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r1 r2"),
+                    Configuration::default(),
+                    vec![],
+                    "removed all voters",
+                ),
+                (
+                    Command::new(CommandType::Simple, "v3 v4"),
+                    Configuration::default(),
+                    vec![],
+                    "more than one voter changed without entering joint config",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l1 v5"),
+                    Configuration::default(),
+                    vec![],
+                    "more than one voter changed without entering joint config",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l1 l2"),
+                    Configuration::default(),
+                    vec![],
+                    "removed all voters",
+                ),
+                (
+                    Command::new(CommandType::Simple, "l2 l3 l4 l5"),
+                    Configuration::new_conf(vec![1], vec![], vec![2,3,4,5], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 1),
+                        (2, ProgressState::Probe, 0, 2),
+                        (3, ProgressState::Probe, 0, 2),
+                        (4, ProgressState::Probe, 0, 8),
+                        (5, ProgressState::Probe, 0, 8),
+                    ],
+                    "",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r1"),
+                    Configuration::default(),
+                    vec![],
+                    "removed all voters",
+                ),
+                (
+                    Command::new(CommandType::Simple, "r2 r3 r4 r5"),
+                    Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                    vec![
+                        (1, ProgressState::Probe, 0, 1),
+                    ],
+                    "",
+                ),
+            ],
         ];
 
         for (test_case, mut commands) in test_cases.drain(..).enumerate() {
@@ -497,145 +879,24 @@ mod test {
                         prs.sort_by(|a, b| a.0.cmp(&b.0));
 
                         assert_eq!(
-                            (expected_conf.clone(), expected_prs.clone()),
-                            (conf.clone(), prs.clone()),
-                            "[test_case #{}, command_index #{}] mismatched result, expected '{:?}', found '{:?}'",
+                            (expected_conf, expected_prs),
+                            (conf, prs),
+                            "[test_case #{}, command_index #{}] mismatched result",
                             test_case + 1,
                             index + 1,
-                            (expected_conf, expected_prs),
-                            (conf, prs)
                         );
                     }
                     Err(e) => {
                         assert_eq!(
                             ConfChangeError(String::from(expected_err)),
                             e,
-                            "[test_case #{}, command_index #{}] mismatched error, expected '{:?}', found '{:?}'",
+                            "[test_case #{}, command_index #{}] mismatched error",
                             test_case + 1,
                             index + 1,
-                            ConfChangeError(String::from(expected_err)),
-                            e
                         );
                     }
                 }
             }
         }
     }
-
-    // #[test]
-    // fn test_confchange_basic() {
-    //     let mut commands = vec![Command::new(CommandType::Simple, "v1")];
-    //     let expected_conf = Configuration::new_conf(vec![1], vec![], vec![], vec![], false);
-    //     let expected_prs: Vec<(u64, ProgressState, u64, u64)> =
-    //         vec![(1, ProgressState::Probe, 0, 0)];
-    //
-    //     let (conf, prs) = test_template(&mut commands).unwrap();
-    //
-    //     assert_eq!(
-    //         expected_conf, conf,
-    //         "mismatched Configuration, expected '{:?}', found '{:?}'",
-    //         expected_conf, conf
-    //     );
-    //     assert_eq!(
-    //         expected_prs, prs,
-    //         "mismatched ProgressSet, expected '{:?}', found '{:?}'",
-    //         expected_prs, prs
-    //     );
-    // }
-    //
-    // #[test]
-    // fn test_confchange_enter_joint_with_autoleave() {
-    //     let mut commands = vec![
-    //         Command::new(CommandType::Simple, "v1"),
-    //         Command::new(CommandType::EnterJointWithAutoLeave, "v2 v3"),
-    //     ];
-    //     let expected_conf = Configuration::new_conf(vec![1, 2, 3], vec![1], vec![], vec![], true);
-    //     let expected_prs: Vec<(u64, ProgressState, u64, u64)> = vec![
-    //         (1, ProgressState::Probe, 0, 0),
-    //         (2, ProgressState::Probe, 0, 1),
-    //         (3, ProgressState::Probe, 0, 1),
-    //     ];
-    //
-    //     let expected_value: Result<(Configuration, Vec<(u64, ProgressState, u64, u64)>)> =
-    //         Ok((expected_conf, expected_prs));
-    //     let value = test_template(&mut commands);
-    //
-    //     assert_eq!(
-    //         expected_value, value,
-    //         "mismatched result, expected '{:?}', found '{:?}'",
-    //         expected_value, value,
-    //     );
-    // }
-
-    // #[test]
-    // #[should_panic(expected = "configuration is already joint")]
-    // // cant enter joint twice, even with autoleave changed.
-    // fn test_confchange_enter_joint_twice() {
-    //     let mut commands = vec![
-    //         Command::new(CommandType::Simple, "v1"),
-    //         Command::new(CommandType::EnterJointWithAutoLeave, "v2 v3"),
-    //         Command::new(CommandType::EnterJoint, ""),
-    //     ];
-    //     test_template(&mut commands).unwrap();
-    //
-    //     assert_eq!(test_template(&mut commands))
-    //
-    // }
-
-    // #[test]
-    // // cant enter joint twice, even with autoleave changed.
-    // fn test_confchange_enter_joint_twice() {
-    //     let mut commands = vec![
-    //         Command::new(CommandType::Simple, "v1"),
-    //         Command::new(CommandType::EnterJointWithAutoLeave, "v2 v3"),
-    //         Command::new(CommandType::EnterJoint, ""),
-    //     ];
-    //     // test_template(&mut commands).unwrap();
-    //     //
-    //     let expected_value: Result<(Configuration, Vec<(u64, ProgressState, u64, u64)>)> =
-    //         Err(ConfChangeError("configuration is already joint".to_owned()));
-    //
-    //     assert_eq!(expected_value, test_template(&mut commands));
-    //
-    //     // match test_template(&mut commands) {
-    //     //     Ok(a) => panic!("??"),
-    //     //     Err(e) => {
-    //     //         assert_eq!(e, ConfChangeError("configuration is already joint".to_owned()));
-    //     //     }
-    //     // }
-    //     // assert_eq!(test_template(&mut commands).unwrap_err(), ConfChangeError("configuration is already joint".to_owned()));
-    // }
-    //
-    // #[test]
-    // fn test_confchange_joint_autoleave() {
-    //     let mut commands = vec![
-    //         Command::new(CommandType::Simple, "v1"),
-    //         Command::new(CommandType::EnterJointWithAutoLeave, "v2 v3"),
-    //         Command::new(CommandType::LeaveJoint, ""),
-    //     ];
-    //     let expected_conf = Configuration::new_conf(vec![1, 2, 3], vec![], vec![], vec![], false);
-    //     let expected_prs: Vec<(u64, ProgressState, u64, u64)> = vec![
-    //         (1, ProgressState::Probe, 0, 0),
-    //         (2, ProgressState::Probe, 0, 1),
-    //         (3, ProgressState::Probe, 0, 1),
-    //     ];
-    //
-    //     let (conf, prs) = test_template(&mut commands).unwrap();
-    //
-    //     assert_eq!(
-    //         expected_conf, conf,
-    //         "mismatched Configuration, expected '{:?}', found '{:?}'",
-    //         expected_conf, conf
-    //     );
-    //     assert_eq!(
-    //         expected_prs, prs,
-    //         "mismatched ProgressSet, expected '{:?}', found '{:?}'",
-    //         expected_prs, prs
-    //     );
-    // }
-    //
-    // #[test]
-    // fn test_confchange_joint_idempotency() {
-    //     assert_eq!(2, 1 + 1);
-    // }
 }
