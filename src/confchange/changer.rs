@@ -4,6 +4,7 @@ use crate::eraftpb::{ConfChangeSingle, ConfChangeType};
 use crate::tracker::{Configuration, ProgressMap, ProgressTracker};
 use crate::{Error, Result};
 
+#[derive(Debug)]
 /// Change log for progress map.
 pub enum MapChangeType {
     Add,
@@ -13,6 +14,7 @@ pub enum MapChangeType {
 /// Changes made by `Changer`.
 pub type MapChange = Vec<(u64, MapChangeType)>;
 
+#[derive(Debug)]
 /// A map that stores updates instead of apply them directly.
 pub struct IncrChangeMap<'a> {
     changes: MapChange,
@@ -33,6 +35,7 @@ impl IncrChangeMap<'_> {
     }
 }
 
+#[derive(Debug)]
 /// Changer facilitates configuration changes. It exposes methods to handle
 /// simple and joint consensus while performing the proper validation that allows
 /// refusing invalid configuration changes before they affect the active
@@ -68,12 +71,19 @@ impl Changer<'_> {
         auto_leave: bool,
         ccs: &[ConfChangeSingle],
     ) -> Result<(Configuration, MapChange)> {
+<<<<<<< HEAD
         if super::joint(self.tracker.conf()) {
+=======
+
+
+        if joint(self.tracker.conf()) {
+>>>>>>> backup
             return Err(Error::ConfChangeError(
                 "configuration is already joint".to_owned(),
             ));
         }
         let (mut cfg, mut prs) = self.check_and_copy()?;
+
         if cfg.voters().incoming.is_empty() {
             // We allow adding nodes to an empty config for convenience (testing and
             // bootstrap), but you can't enter a joint state.
