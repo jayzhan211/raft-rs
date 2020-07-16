@@ -23,9 +23,12 @@ impl Configuration {
         }
     }
 
-    /// Creates a new configuration using two given ID sets.
-    pub fn new_joint(incoming: MajorityConfig, outgoing: MajorityConfig) -> Configuration {
-        Configuration { incoming, outgoing }
+    /// Creates a new configuration using the given IDs.
+    pub fn new_joint(incoming: HashSet<u64>, outgoing: HashSet<u64>) -> Self {
+        Self {
+            incoming: MajorityConfig::new(incoming),
+            outgoing: MajorityConfig::new(outgoing),
+        }
     }
 
     /// Creates an empty configuration with given capacity.
@@ -89,7 +92,7 @@ impl Configuration {
 
 #[cfg(test)]
 mod test {
-    use crate::{AckIndexer, HashMap, HashSet, Index, JointConfig, MajorityConfig, VoteResult};
+    use crate::{AckIndexer, HashMap, HashSet, Index, JointConfig, VoteResult};
 
     #[test]
     fn test_joint_commit_single_group() {
@@ -189,27 +192,19 @@ mod test {
             (vec![1, 2, 3], vec![1, 2, 3], vec![50, 45, 0], 45),
         ];
 
-        for (i, (cfg, cfgj, idx, expected_index)) in test_cases.drain(..).enumerate() {
-            let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
-            let cfgj_set: HashSet<_> = cfgj.iter().cloned().collect::<HashSet<_>>();
-
-            let c = MajorityConfig::new(cfg_set);
-            let cj = MajorityConfig::new(cfgj_set);
-
-            let mut voters = vec![];
-            voters.extend_from_slice(&cfg);
-            voters.extend_from_slice(&cfgj);
-            let s: std::collections::HashSet<_> = voters.drain(..).collect();
-            voters.extend(s.into_iter());
+        for (test_case, (cfg, cfgj, idx, expected_index)) in test_cases.drain(..).enumerate() {
+            let cfg_set: HashSet<u64> = cfg.into_iter().collect();
+            let cfgj_set: HashSet<u64> = cfgj.into_iter().collect();
+            let mut voters: Vec<u64> = cfg_set.union(&cfgj_set).into_iter().cloned().collect();
             voters.sort();
 
             assert_eq!(
                 voters.len(),
                 idx.len(),
-                "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
-                i + 1,
-                voters,
-                idx
+                "[test_cases #{}] error: mismatched input length for voters, expected '{}', found '{}'",
+                test_case + 1,
+                voters.len(),
+                idx.len(),
             );
 
             let mut l: AckIndexer = AckIndexer::default();
@@ -224,17 +219,22 @@ mod test {
                 );
             }
 
-            let (index1, _) =
-                JointConfig::new_joint(c.clone(), cj.clone()).committed_index(false, &l);
-            let (index2, _) = JointConfig::new_joint(cj, c).committed_index(false, &l);
+            let index1 = JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone())
+                .committed_index(false, &l)
+                .0;
+            let index2 = JointConfig::new_joint(cfgj_set, cfg_set)
+                .committed_index(false, &l)
+                .0;
 
-            assert_eq!(index1, index2, "[test_cases #{}] Interchanging the majorities shouldn't make a difference. If it does, print.", i+1);
+            assert_eq!(index1, index2, "[test_cases #{}] Interchanging the majorities shouldn't make a difference. expected '{}', found '{}'", test_case+1, index1, index2);
 
             assert_eq!(
-                index1,
                 expected_index,
-                "[test_cases #{}] index does not match expected value",
-                i + 1
+                index1,
+                "[test_cases #{}] mismatched index, expected '{}', found '{}'",
+                test_case + 1,
+                expected_index,
+                index1,
             )
         }
     }
@@ -344,27 +344,21 @@ mod test {
                 VoteResult::Won,
             ),
         ];
-        for (i, (cfg, cfgj, votes, expected_vote_result)) in test_cases.drain(..).enumerate() {
-            let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
-            let cfgj_set: HashSet<_> = cfgj.iter().cloned().collect::<HashSet<_>>();
-
-            let c = MajorityConfig::new(cfg_set);
-            let cj = MajorityConfig::new(cfgj_set);
-
-            let mut voters = vec![];
-            voters.extend_from_slice(&cfg);
-            voters.extend_from_slice(&cfgj);
-            let s: HashSet<_> = voters.drain(..).collect();
-            voters.extend(s.into_iter());
+        for (test_case, (cfg, cfgj, votes, expected_vote_result)) in
+            test_cases.drain(..).enumerate()
+        {
+            let cfg_set: HashSet<u64> = cfg.into_iter().collect();
+            let cfgj_set: HashSet<u64> = cfgj.into_iter().collect();
+            let mut voters: Vec<u64> = cfg_set.union(&cfgj_set).into_iter().cloned().collect();
             voters.sort();
 
             assert_eq!(
                 voters.len(),
                 votes.len(),
-                "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
-                i + 1,
-                voters,
-                votes
+                "[test_cases #{}] error: mismatched input length for voters, expected '{:?}', found '{:?}'",
+                test_case + 1,
+                voters.len(),
+                votes.len(),
             );
 
             let mut l: HashMap<u64, bool> = HashMap::default();
@@ -377,17 +371,28 @@ mod test {
                 };
             }
 
-            let vote_result1 =
-                JointConfig::new_joint(c.clone(), cj.clone()).vote_result(|id| l.get(&id).cloned());
-            let vote_result2 = JointConfig::new_joint(cj, c).vote_result(|id| l.get(&id).cloned());
+            let vote_result1 = JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone())
+                .vote_result(|id| l.get(&id).cloned());
+            let vote_result2 =
+                JointConfig::new_joint(cfgj_set, cfg_set).vote_result(|id| l.get(&id).cloned());
 
-            assert_eq!(vote_result1,vote_result2, "[test_cases #{}] Interchanging the majorities shouldn't make a difference. If it does, print.", i+1);
             assert_eq!(
                 vote_result1,
+                vote_result2,
+                "[test_cases #{}] Interchanging the majorities shouldn't make a difference. expected '{:?}', found '{:?}'",
+                test_case+1,
+                vote_result1,
+                vote_result2
+            );
+
+            assert_eq!(
                 expected_vote_result,
-                "[test_cases #{}] vote_result does not match expected value",
-                i + 1
-            )
+                vote_result1,
+                "[test_cases #{}] mismatched VoteResult, expected '{:?}', found '{:?}'",
+                test_case + 1,
+                expected_vote_result,
+                vote_result1,
+            );
         }
     }
     #[test]
@@ -755,26 +760,18 @@ mod test {
         for (i, (cfg, cfgj, idx, group_ids, expected_index, expected_use_group_commit)) in
             test_cases.drain(..).enumerate()
         {
-            let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
-            let cfgj_set: HashSet<_> = cfgj.iter().cloned().collect::<HashSet<_>>();
-
-            let c = MajorityConfig::new(cfg_set);
-            let cj = MajorityConfig::new(cfgj_set);
-
-            let mut voters = vec![];
-            voters.extend_from_slice(&cfg);
-            voters.extend_from_slice(&cfgj);
-            let s: std::collections::HashSet<_> = voters.drain(..).collect();
-            voters.extend(s.into_iter());
+            let cfg_set: HashSet<u64> = cfg.into_iter().collect();
+            let cfgj_set: HashSet<u64> = cfgj.into_iter().collect();
+            let mut voters: Vec<u64> = cfg_set.union(&cfgj_set).into_iter().cloned().collect();
             voters.sort();
 
             assert_eq!(
                 voters.len(),
                 idx.len(),
-                "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
+                "[test_cases #{}] error: mismatched input length for voters, expected '{:?}', found '{:?}'",
                 i + 1,
-                voters,
-                idx
+                voters.len(),
+                idx.len(),
             );
 
             let mut l: AckIndexer = AckIndexer::default();
@@ -790,24 +787,29 @@ mod test {
             }
 
             let (index1, use_group_commit1) =
-                JointConfig::new_joint(c.clone(), cj.clone()).committed_index(true, &l);
+                JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone()).committed_index(true, &l);
             let (index2, use_group_commit2) =
-                JointConfig::new_joint(cj, c).committed_index(true, &l);
+                JointConfig::new_joint(cfgj_set, cfg_set).committed_index(true, &l);
 
-            assert_eq!(index1, index2, "[test_cases #{}] Interchanging the majorities shouldn't make a difference. If it does, print.", i + 1);
-            assert_eq!(use_group_commit1, use_group_commit2, "[test_cases #{}] Interchanging the majorities shouldn't make a difference. If it does, print.", i + 1);
+            assert_eq!(index1, index2, "[test_cases #{}] mismatched index, interchanging the majorities shouldn't make a difference. expected '{}', found '{}'", i+1, index1, index2);
+            assert_eq!(use_group_commit1, use_group_commit2, "[test_cases #{}] mismatched use_group_commit, interchanging the majorities shouldn't make a difference. expected '{}', found '{}'", i+1, use_group_commit1, use_group_commit2);
 
             assert_eq!(
-                index1,
                 expected_index,
-                "[test_cases #{}] index does not match expected value",
-                i + 1
+                index1,
+                "[test_cases #{}] mismatched index, expected '{}', found '{}'",
+                i + 1,
+                expected_index,
+                index1,
             );
+
             assert_eq!(
-                use_group_commit1,
                 expected_use_group_commit,
-                "[test_cases #{}] index is not computed by group commit",
-                i + 1
+                use_group_commit1,
+                "[test_cases #{}] mismatched use_group_commit, expected '{}', found '{}'",
+                i + 1,
+                expected_use_group_commit,
+                use_group_commit1,
             );
         }
     }

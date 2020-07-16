@@ -150,9 +150,7 @@ impl DerefMut for Configuration {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        majority, AckIndexer, HashMap, HashSet, Index, JointConfig, MajorityConfig, VoteResult,
-    };
+    use crate::{AckIndexer, HashMap, HashSet, Index, JointConfig, MajorityConfig, VoteResult};
 
     #[test]
     fn test_majority_commit_single_group() {
@@ -186,21 +184,19 @@ mod test {
             (vec![1, 2, 3, 4, 5], vec![0, 101, 103, 103, 104], 103),
             (vec![1, 2, 3, 4, 5], vec![101, 102, 103, 103, 0], 102),
         ];
-        for (tc, (cfg, idx, expected_index)) in test_cases.drain(..).enumerate() {
-            let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
-            let c = MajorityConfig::new(cfg_set.clone());
 
-            let mut voters = vec![];
-            voters.extend(cfg_set.into_iter());
+        for (test_case, (cfg, idx, expected_index)) in test_cases.drain(..).enumerate() {
+            let cfg_set: HashSet<u64> = cfg.into_iter().collect();
+            let mut voters: Vec<u64> = cfg_set.clone().into_iter().collect();
             voters.sort();
 
             assert_eq!(
                 voters.len(),
                 idx.len(),
-                "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
-                tc + 1,
-                voters,
-                idx
+                "[test_cases #{}] error: mismatched input length for voters, expected '{}', found '{}'",
+                test_case + 1,
+                voters.len(),
+                idx.len(),
             );
 
             let mut l: AckIndexer = AckIndexer::default();
@@ -215,65 +211,33 @@ mod test {
                 );
             }
 
-            let (index1, _) = c.clone().committed_index(false, &l);
-
-            // These alternative computations should return the same
-            // result. If not, print to the output.
-            let index2 = if voters.is_empty() {
-                u64::MAX
-            } else {
-                let mut index = 0;
-                // calculate # of index greater than or equal to
-                let mut nums = HashMap::default();
-
-                // create a unique index vec
-                let idx_set: HashSet<_> = idx.iter().cloned().collect::<HashSet<_>>();
-                let mut idx_vec = vec![];
-                idx_vec.extend(idx_set.into_iter());
-
-                for x in idx_vec.iter().cloned() {
-                    for y in idx.iter().cloned() {
-                        if y >= x {
-                            let counter = nums.entry(x).or_insert(0);
-                            *counter += 1;
-                        }
-                    }
-                }
-                let quorum = majority(voters.len());
-
-                for (&k, &v) in nums.iter() {
-                    if v >= quorum && k > index {
-                        index = k;
-                    }
-                }
-                index
-            };
-
-            assert_eq!(
-                index1,
-                index2,
-                "[test_cases #{}] alternative computation fails",
-                tc + 1
-            );
+            let c = MajorityConfig::new(cfg_set.clone());
+            let index1 = c.clone().committed_index(false, &l).0;
 
             // Joining a majority with the empty majority should give same result.
-            let cc = JointConfig::new_joint(c.clone(), MajorityConfig::default());
+            let cc = JointConfig::new_joint(cfg_set.clone(), HashSet::default());
             let index2 = cc.committed_index(false, &l).0;
+
             assert_eq!(
                 index1,
                 index2,
-                "[test_cases #{}] zero-joint quorum fails",
-                tc + 1
+                "[test_cases #{}] zero-joint quorum fails, expected '{}', found '{}'",
+                test_case + 1,
+                index1,
+                index2,
             );
 
             // Joining a majority with itself should give same result.
-            let cc = JointConfig::new_joint(c.clone(), c.clone());
+            let cc = JointConfig::new_joint(cfg_set.clone(), cfg_set);
             let index2 = cc.committed_index(false, &l).0;
+
             assert_eq!(
                 index1,
                 index2,
-                "[test_cases #{}] self-joint quorum fails",
-                tc + 1
+                "[test_cases #{}] self-joint quorum fails, expected '{}', found '{}'",
+                test_case + 1,
+                index1,
+                index2,
             );
 
             // overlaying
@@ -294,12 +258,13 @@ mod test {
                     assert_eq!(
                         index1,
                         index2,
-                        "[test_cases #{}] overlaying case 1 fails",
-                        tc + 1
+                        "[test_cases #{}] overlaying case 1 fails, expected '{}', found '{}'",
+                        test_case + 1,
+                        index1,
+                        index2,
                     );
 
                     // case2: set idx[i] => 0
-
                     l.insert(
                         id,
                         Index {
@@ -309,11 +274,14 @@ mod test {
                     );
 
                     let index2 = c.clone().committed_index(false, &l).0;
+
                     assert_eq!(
                         index1,
                         index2,
-                        "[test_cases #{}] overlaying case 2 fails",
-                        tc + 1
+                        "[test_cases #{}] overlaying case 2 fails, expected '{}', found '{}'",
+                        test_case + 1,
+                        index1,
+                        index2,
                     );
 
                     // recover
@@ -328,10 +296,12 @@ mod test {
             }
 
             assert_eq!(
-                index1,
                 expected_index,
-                "[test_cases #{}] index does not match expected value",
-                tc + 1
+                index1,
+                "[test_cases #{}] mismatched index, expected '{}', found '{}'",
+                test_case + 1,
+                expected_index,
+                index1,
             )
         }
     }
@@ -389,22 +359,18 @@ mod test {
                 VoteResult::Lost,
             ),
         ];
-        for (i, (cfg, votes, expected_vote_result)) in test_cases.drain(..).enumerate() {
-            let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
-
-            let c = MajorityConfig::new(cfg_set.clone());
-
-            let mut voters = vec![];
-            voters.extend(cfg_set.into_iter());
+        for (test_case, (cfg, votes, expected_vote_result)) in test_cases.drain(..).enumerate() {
+            let cfg_set: HashSet<u64> = cfg.into_iter().collect();
+            let mut voters: Vec<u64> = cfg_set.clone().into_iter().collect();
             voters.sort();
 
             assert_eq!(
                 voters.len(),
                 votes.len(),
-                "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
-                i + 1,
-                voters,
-                votes
+                "[test_cases #{}] error: mismatched input length for voters, expected '{:?}', found '{:?}'",
+                test_case + 1,
+                voters.len(),
+                votes.len(),
             );
 
             let mut l: HashMap<u64, bool> = HashMap::default();
@@ -417,12 +383,16 @@ mod test {
                 };
             }
 
+            let c = MajorityConfig::new(cfg_set);
             let vote_result = c.vote_result(|id| l.get(&id).cloned());
+
             assert_eq!(
-                vote_result,
                 expected_vote_result,
-                "[test_cases #{}] vote_result does not match expected value",
-                i + 1
+                vote_result,
+                "[test_cases #{}] mismatched VoteResult, expected '{:?}', found '{:?}'",
+                test_case + 1,
+                expected_vote_result,
+                vote_result,
             )
         }
     }
@@ -493,23 +463,20 @@ mod test {
                 false,
             ),
         ];
-        for (tc, (cfg, idx, group_ids, expected_index, expected_use_group_commit)) in
+        for (test_case, (cfg, idx, group_ids, expected_index, expected_use_group_commit)) in
             test_cases.drain(..).enumerate()
         {
-            let cfg_set: HashSet<_> = cfg.iter().cloned().collect::<HashSet<_>>();
-            let c = MajorityConfig::new(cfg_set.clone());
-
-            let mut voters = vec![];
-            voters.extend(cfg_set.into_iter());
+            let cfg_set: HashSet<u64> = cfg.into_iter().collect();
+            let mut voters: Vec<u64> = cfg_set.clone().into_iter().collect();
             voters.sort();
 
             assert_eq!(
                 voters.len(),
                 idx.len(),
-                "[test_cases #{}] error: mismatched input for voters {:?}: {:?}, check out test_cases",
-                tc + 1,
-                voters,
-                idx
+                "[test_cases #{}] error: mismatched input length for voters, expected '{:?}', found '{:?}'",
+                test_case + 1,
+                voters.len(),
+                idx.len(),
             );
 
             let mut l: AckIndexer = AckIndexer::default();
@@ -524,38 +491,34 @@ mod test {
                 );
             }
 
+            let c = MajorityConfig::new(cfg_set.clone());
+
             let (index1, use_group_commit1) = c.clone().committed_index(true, &l);
 
             // Joining a majority with the empty majority should give same result.
-            let cc = JointConfig::new_joint(c.clone(), MajorityConfig::default());
+            let cc = JointConfig::new_joint(cfg_set.clone(), HashSet::default());
             let (index2, use_group_commit2) = cc.committed_index(true, &l);
+
             assert_eq!(
-                index1,
-                index2,
-                "[test_cases #{}] zero-joint quorum fails",
-                tc + 1
-            );
-            assert_eq!(
-                use_group_commit1,
-                use_group_commit2,
-                "[test_cases #{}] zero-joint quorum fails",
-                tc + 1
+                (index1, use_group_commit1),
+                (index2, use_group_commit2),
+                "[test_cases #{}] zero-joint quorum fails, expected '{:?}', found '{:?}'",
+                test_case + 1,
+                (index1, use_group_commit1),
+                (index2, use_group_commit2),
             );
 
             // Joining a majority with itself should give same result.
-            let cc = JointConfig::new_joint(c.clone(), c.clone());
+            let cc = JointConfig::new_joint(cfg_set.clone(), cfg_set);
             let (index2, use_group_commit2) = cc.committed_index(true, &l);
+
             assert_eq!(
-                index1,
-                index2,
-                "[test_cases #{}] self-joint quorum fails",
-                tc + 1
-            );
-            assert_eq!(
-                use_group_commit1,
-                use_group_commit2,
-                "[test_cases #{}] self-joint quorum fails",
-                tc + 1
+                (index1, use_group_commit1),
+                (index2, use_group_commit2),
+                "[test_cases #{}] self-joint quorum fails, expected '{:?}', found '{:?}'",
+                test_case + 1,
+                (index1, use_group_commit1),
+                (index2, use_group_commit2),
             );
 
             // overlaying
@@ -572,16 +535,18 @@ mod test {
                         },
                     );
 
-                    let index2 = c.clone().committed_index(true, &l).0;
+                    let (index2, use_group_commit2) = c.clone().committed_index(true, &l);
+
                     assert_eq!(
-                        index1,
-                        index2,
-                        "[test_cases #{}] overlaying case 1 fails",
-                        tc + 1
+                        (index1, use_group_commit1),
+                        (index2, use_group_commit2),
+                        "[test_cases #{}] overlaying case 1 fails, expected '{:?}', found '{:?}'",
+                        test_case + 1,
+                        (index1, use_group_commit1),
+                        (index2, use_group_commit2),
                     );
 
                     // case2: set idx[i] => 0
-
                     l.insert(
                         id,
                         Index {
@@ -590,12 +555,15 @@ mod test {
                         },
                     );
 
-                    let index2 = c.clone().committed_index(true, &l).0;
+                    let (index2, use_group_commit2) = c.clone().committed_index(true, &l);
+
                     assert_eq!(
-                        index1,
-                        index2,
-                        "[test_cases #{}] overlaying case 2 fails",
-                        tc + 1
+                        (index1, use_group_commit1),
+                        (index2, use_group_commit2),
+                        "[test_cases #{}] overlaying case 1 fails, expected '{:?}', found '{:?}'",
+                        test_case + 1,
+                        (index1, use_group_commit1),
+                        (index2, use_group_commit2),
                     );
 
                     // recover
@@ -610,16 +578,12 @@ mod test {
             }
 
             assert_eq!(
-                index1,
-                expected_index,
-                "[test_cases #{}] index does not match expected value",
-                tc + 1
-            );
-            assert_eq!(
-                use_group_commit1,
-                expected_use_group_commit,
-                "[test_cases #{}] index is not computed by group commit",
-                tc + 1
+                (expected_index, expected_use_group_commit),
+                (index1, use_group_commit1),
+                "[test_cases #{}] mismatched value, expected '{:?}', found '{:?}'",
+                test_case + 1,
+                (expected_index, expected_use_group_commit),
+                (index1, use_group_commit1),
             );
         }
     }
