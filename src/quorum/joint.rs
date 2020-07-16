@@ -23,8 +23,9 @@ impl Configuration {
         }
     }
 
-    pub fn new_joint(incoming: HashSet<u64>, outgoing: HashSet<u64>) -> Configuration {
-        Configuration {
+    /// Creates a new configuration using the given IDs.
+    pub fn new_joint(incoming: HashSet<u64>, outgoing: HashSet<u64>) -> Self {
+        Self {
             incoming: MajorityConfig::new(incoming),
             outgoing: MajorityConfig::new(outgoing),
         }

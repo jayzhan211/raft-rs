@@ -71,8 +71,6 @@ impl Changer<'_> {
         auto_leave: bool,
         ccs: &[ConfChangeSingle],
     ) -> Result<(Configuration, MapChange)> {
-
-
         if joint(self.tracker.conf()) {
             return Err(Error::ConfChangeError(
                 "configuration is already joint".to_owned(),
@@ -368,14 +366,12 @@ fn joint(cfg: &Configuration) -> bool {
 
 #[cfg(test)]
 mod test {
-    use crate::{default_logger, MapChange, ProgressState};
-    use crate::{Changer, ProgressTracker};
-    use raft_proto::{new_conf_change_single, parse_conf_change};
-    use std::sync::mpsc::channel;
     use crate::tracker::Configuration;
     use crate::Result;
+    use crate::{default_logger, MapChange, ProgressState};
+    use crate::{Changer, ProgressTracker};
+    use raft_proto::parse_conf_change;
 
-    /// Change log for progress map.
     enum CommandType {
         Simple,
         EnterJointWithAutoLeave,
@@ -389,8 +385,8 @@ mod test {
     }
 
     impl Command {
-        fn new(command_type: CommandType, tokens: &str) ->Self {
-            Self{
+        fn new(command_type: CommandType, tokens: &str) -> Self {
+            Self {
                 command_type,
                 tokens: tokens.to_string(),
             }
@@ -403,103 +399,154 @@ mod test {
             Err(err) => panic!("{}", err),
         };
         match command.command_type {
-            CommandType::Simple => {
-                c.simple(&ccs)
-            }
-            CommandType::EnterJointWithAutoLeave => {
-                c.enter_joint(true, &ccs)
-            }
-            CommandType::EnterJoint => {
-                c.enter_joint(false, &ccs)
-            }
-            CommandType::LeaveJoint => {
-                c.leave_joint()
-            }
+            CommandType::Simple => c.simple(&ccs),
+            CommandType::EnterJointWithAutoLeave => c.enter_joint(true, &ccs),
+            CommandType::EnterJoint => c.enter_joint(false, &ccs),
+            CommandType::LeaveJoint => c.leave_joint(),
         }
     }
 
     #[test]
-    fn test_basic() {
+    fn test_changer_basic() {
         let mut commands = vec![Command::new(CommandType::Simple, "v1")];
+        let expected_conf = Configuration::new_conf(vec![1], vec![], vec![], vec![], false);
+        let expected_prs: Vec<(u64, ProgressState, u64, u64)> =
+            vec![(1, ProgressState::Probe, 0, 0)];
 
         let mut tr = ProgressTracker::new(10, default_logger());
         let mut c = Changer::new(&tr);
 
         for (index, command) in commands.drain(..).enumerate() {
             let (conf, changes) = execute_commands(&mut c, command).unwrap();
-            tr.apply_conf(conf, changes, 0);
+            tr.apply_conf(conf, changes, index as u64);
             c = Changer::new(&tr);
         }
-        let conf = c.tracker.conf();
-        let pr = c.tracker.progress();
-        println!("conf = {:?}", conf);
-        println!("pr = {:?}", pr);
 
-        let expected_conf = Configuration::new_conf(vec![1], vec![],vec![],vec![],false);
-        assert_eq!(expected_conf, conf, "mismatched configuration, expected '{:?}', found '{:?}'", expected_conf, conf);
+        let conf = c.tracker.conf().clone();
+        let pr_map = c.tracker.progress();
 
+        let mut prs: Vec<_> = pr_map
+            .iter()
+            .map(|(&id, pr)| (id, pr.state, pr.matched, pr.next_idx))
+            .collect();
+        prs.sort_by(|a, b| a.0.cmp(&b.0));
 
-
+        assert_eq!(
+            expected_conf, conf,
+            "mismatched Configuration, expected '{:?}', found '{:?}'",
+            expected_conf, conf
+        );
+        assert_eq!(
+            expected_prs, prs,
+            "mismatched ProgressSet, expected '{:?}', found '{:?}'",
+            expected_prs, prs
+        );
     }
 
-    // #[test]
-    // fn test_confchange_changer() {
-    //     let mut test_cases = vec![
-    //         vec![
-    //             ("simple", "v1", vec![1],vec![],vec![],vec![], false, vec![(ProgressState::Probe,0,0)]),
-    //             ("enter-joint autoleave=true", "v2 v3", vec![1,2,3],vec![1],vec![],vec![], true, vec![(ProgressState::Probe,0,0),(ProgressState::Probe,0,1),(ProgressState::Probe,0,1)]),
-    //             ("leave-joint", "", vec![1,2,3],vec![],vec![],vec![], false, vec![(ProgressState::Probe,0,0),(ProgressState::Probe,0,1),(ProgressState::Probe,0,1)]),
-    //         ],
-    //     ];
-    //
-    //     for (test_case, mut commands) in test_cases.drain(..).enumerate() {
-    //         let mut tr = ProgressTracker::new(10, default_logger());
-    //         let mut c = Changer::new(&tr);
-    //
-    //         for (index, (cmd, tokens, incoming, outgoing, learners, learners_next,autoleave, mut progress)) in commands.drain(..).enumerate() {
-    //             let ccs = match parse_conf_change(tokens) {
-    //                 Ok(ccs) => ccs,
-    //                 Err(err) => panic!("[test_case #{}] {}", test_case + 1, err),
-    //             };
-    //
-    //             match cmd {
-    //                 "simple" => {
-    //                     c.simple(&ccs)
-    //                 }
-    //                 "enter-joint autoleave=true" => {
-    //                     c.enter_joint(true, &ccs)
-    //                 }
-    //                 "enter-joint autoleave=false" => {
-    //                     c.enter_joint(false, &ccs)
-    //                 }
-    //                 "leave-joint" => {
-    //                     c.leave_joint()
-    //                 }
-    //                 _ => panic!("unknown command"),
-    //             }
-    //
-    //             let conf = Configuration::new(incoming.into_iter(), outgoing.into_iter(), learners.into_iter(), learners_next.into_iter(), autoleave);
-    //
-    //             assert_eq!(&conf, c.tracker.conf(), "mismatched configuration, expected '{:?}', found '{:?}'", c.tracker.conf(), conf);
-    //
-    //             let progress_map = c.tracker.progress();
-    //             assert_eq!(progress.len(), progress_map.len(), "length should be the same, expected '{:?}', found '{:?}'", progress, progress_map);
-    //
-    //             for (i, (state, matched, next_index)) in progress.drain(..).enumerate() {
-    //                 let pr = progress_map.get(&((i+1) as u64)).unwrap();
-    //                 assert_eq!(pr.state, state, "mismatched value, expected '{:?}', found '{:?}'", pr.state, state);
-    //                 assert_eq!(pr.matched, matched, "mismatched value, expected '{}', found '{}'", pr.matched, matched);
-    //                 assert_eq!(pr.next_idx, next_index, "mismatched value, expected '{}', found '{}'", pr.next_idx, next_index);
-    //             }
-    //         }
-    //     }
-    //
-    //     assert_eq!(2, 1 + 1);
-    // }
+    #[test]
+    fn test_enter_joint_with_autoleave() {
+        let mut commands = vec![
+            Command::new(CommandType::Simple, "v1"),
+            Command::new(CommandType::EnterJointWithAutoLeave, "v2 v3"),
+        ];
+        let expected_conf = Configuration::new_conf(vec![1, 2, 3], vec![1], vec![], vec![], true);
+        let expected_prs: Vec<(u64, ProgressState, u64, u64)> = vec![
+            (1, ProgressState::Probe, 0, 0),
+            (2, ProgressState::Probe, 0, 1),
+            (3, ProgressState::Probe, 0, 1),
+        ];
 
-    // #[test]
-    // #[should_panic(expected = "configuration is already joint")]
-    // fn test_enter_joint_twice() {
-    //     assert_eq!(2, 1 + 1);
-    // }
+        let mut tr = ProgressTracker::new(10, default_logger());
+        let mut c = Changer::new(&tr);
+
+        for (index, command) in commands.drain(..).enumerate() {
+            let (conf, changes) = execute_commands(&mut c, command).unwrap();
+            tr.apply_conf(conf, changes, index as u64);
+            c = Changer::new(&tr);
+        }
+
+        let conf = c.tracker.conf().clone();
+        let pr_map = c.tracker.progress();
+
+        let mut prs: Vec<_> = pr_map
+            .iter()
+            .map(|(&id, pr)| (id, pr.state, pr.matched, pr.next_idx))
+            .collect();
+        prs.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(
+            expected_conf, conf,
+            "mismatched Configuration, expected '{:?}', found '{:?}'",
+            expected_conf, conf
+        );
+        assert_eq!(
+            expected_prs, prs,
+            "mismatched ProgressSet, expected '{:?}', found '{:?}'",
+            expected_prs, prs
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "configuration is already joint")]
+    // cant enter joint twice, even with autoleave changed.
+    fn test_enter_joint_twice() {
+        let mut commands = vec![
+            Command::new(CommandType::Simple, "v1"),
+            Command::new(CommandType::EnterJointWithAutoLeave, "v2 v3"),
+            Command::new(CommandType::EnterJoint, ""),
+        ];
+
+        let mut tr = ProgressTracker::new(10, default_logger());
+        let mut c = Changer::new(&tr);
+
+        for (index, command) in commands.drain(..).enumerate() {
+            let (conf, changes) = execute_commands(&mut c, command).unwrap();
+            tr.apply_conf(conf, changes, index as u64);
+            c = Changer::new(&tr);
+        }
+    }
+
+    #[test]
+    fn test_joint_autoleave() {
+        let mut commands = vec![
+            Command::new(CommandType::Simple, "v1"),
+            Command::new(CommandType::EnterJointWithAutoLeave, "v2 v3"),
+            Command::new(CommandType::LeaveJoint, ""),
+        ];
+        let expected_conf = Configuration::new_conf(vec![1, 2, 3], vec![], vec![], vec![], false);
+        let expected_prs: Vec<(u64, ProgressState, u64, u64)> = vec![
+            (1, ProgressState::Probe, 0, 0),
+            (2, ProgressState::Probe, 0, 1),
+            (3, ProgressState::Probe, 0, 1),
+        ];
+
+        let mut tr = ProgressTracker::new(10, default_logger());
+        let mut c = Changer::new(&tr);
+
+        for (index, command) in commands.drain(..).enumerate() {
+            let (conf, changes) = execute_commands(&mut c, command).unwrap();
+            tr.apply_conf(conf, changes, index as u64);
+            c = Changer::new(&tr);
+        }
+
+        let conf = c.tracker.conf().clone();
+        let pr_map = c.tracker.progress();
+
+        let mut prs: Vec<_> = pr_map
+            .iter()
+            .map(|(&id, pr)| (id, pr.state, pr.matched, pr.next_idx))
+            .collect();
+        prs.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(
+            expected_conf, conf,
+            "mismatched Configuration, expected '{:?}', found '{:?}'",
+            expected_conf, conf
+        );
+        assert_eq!(
+            expected_prs, prs,
+            "mismatched ProgressSet, expected '{:?}', found '{:?}'",
+            expected_prs, prs
+        );
+    }
 }
