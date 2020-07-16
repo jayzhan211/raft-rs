@@ -39,7 +39,7 @@ pub fn parse_conf_change(s: &str) -> Result<Vec<ConfChangeSingle>, String> {
         });
         cc.node_id = match chars.as_str().parse() {
             Ok(id) => id,
-            Err(e) => return Err(format!("parse token '{}' fail: {}", tok, e)),
+            Err(e) => return Err(format!("parse token {} fail: {}", tok, e)),
         };
         ccs.push(cc);
     }

@@ -395,10 +395,8 @@ mod test {
     }
 
     fn execute_commands(c: &mut Changer, command: Command) -> Result<(Configuration, MapChange)> {
-        let ccs = match parse_conf_change(command.tokens.as_str()) {
-            Ok(ccs) => ccs,
-            Err(err) => panic!("{}", err),
-        };
+        let ccs = parse_conf_change(command.tokens.as_str()).unwrap();
+
         match command.command_type {
             CommandType::Simple => c.simple(&ccs),
             CommandType::EnterJointWithAutoLeave => c.enter_joint(true, &ccs),
@@ -409,7 +407,14 @@ mod test {
 
     #[test]
     fn test_confchange() {
-        let mut test_cases = vec![
+        let mut test_cases: Vec<
+            Vec<(
+                Command,
+                Configuration,
+                Vec<(u64, ProgressState, u64, u64)>,
+                &str,
+            )>,
+        > = vec![
             // joint autoleave
             vec![
                 (
