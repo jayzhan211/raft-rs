@@ -454,7 +454,10 @@ mod test {
                     "",
                 ),
                 (
-                    Command::new(CommandType::EnterJoint, "r1 r2 r9 v2 v3 v4 v2 v3 v4 l2 l2 r4 r4 l1 l1"),
+                    Command::new(
+                        CommandType::EnterJoint,
+                        "r1 r2 r9 v2 v3 v4 v2 v3 v4 l2 l2 r4 r4 l1 l1",
+                    ),
                     Configuration::new_conf(vec![3], vec![1], vec![2], vec![1], false),
                     vec![
                         (1, ProgressState::Probe, 0, 0),
@@ -598,7 +601,7 @@ mod test {
                 ),
                 (
                     Command::new(CommandType::Simple, "l9"),
-                    Configuration::new_conf(vec![2, 3], vec![], vec![4,9], vec![], false),
+                    Configuration::new_conf(vec![2, 3], vec![], vec![4, 9], vec![], false),
                     vec![
                         (2, ProgressState::Probe, 0, 9),
                         (3, ProgressState::Probe, 0, 9),
@@ -613,17 +616,13 @@ mod test {
                 (
                     Command::new(CommandType::Simple, "v1"),
                     Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
-                    vec![
-                        (1, ProgressState::Probe, 0, 0),
-                    ],
+                    vec![(1, ProgressState::Probe, 0, 0)],
                     "",
                 ),
                 (
                     Command::new(CommandType::Simple, "v1"),
                     Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
-                    vec![
-                        (1, ProgressState::Probe, 0, 0),
-                    ],
+                    vec![(1, ProgressState::Probe, 0, 0)],
                     "",
                 ),
                 (
@@ -656,17 +655,13 @@ mod test {
                 (
                     Command::new(CommandType::Simple, "r1"),
                     Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
-                    vec![
-                        (2, ProgressState::Probe, 0, 2),
-                    ],
+                    vec![(2, ProgressState::Probe, 0, 2)],
                     "",
                 ),
                 (
                     Command::new(CommandType::Simple, "r1"),
                     Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
-                    vec![
-                        (2, ProgressState::Probe, 0, 2),
-                    ],
+                    vec![(2, ProgressState::Probe, 0, 2)],
                     "",
                 ),
                 (
@@ -681,25 +676,19 @@ mod test {
                 (
                     Command::new(CommandType::Simple, "r3"),
                     Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
-                    vec![
-                        (2, ProgressState::Probe, 0, 2),
-                    ],
+                    vec![(2, ProgressState::Probe, 0, 2)],
                     "",
                 ),
                 (
                     Command::new(CommandType::Simple, "r3"),
                     Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
-                    vec![
-                        (2, ProgressState::Probe, 0, 2),
-                    ],
+                    vec![(2, ProgressState::Probe, 0, 2)],
                     "",
                 ),
                 (
                     Command::new(CommandType::Simple, "r4"),
                     Configuration::new_conf(vec![2], vec![], vec![], vec![], false),
-                    vec![
-                        (2, ProgressState::Probe, 0, 2),
-                    ],
+                    vec![(2, ProgressState::Probe, 0, 2)],
                     "",
                 ),
             ],
@@ -708,9 +697,7 @@ mod test {
                 (
                     Command::new(CommandType::Simple, "v1"),
                     Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
-                    vec![
-                        (1, ProgressState::Probe, 0, 0),
-                    ],
+                    vec![(1, ProgressState::Probe, 0, 0)],
                     "",
                 ),
                 (
@@ -784,9 +771,7 @@ mod test {
                 (
                     Command::new(CommandType::Simple, "v1"),
                     Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
-                    vec![
-                        (1, ProgressState::Probe, 0, 1),
-                    ],
+                    vec![(1, ProgressState::Probe, 0, 1)],
                     "",
                 ),
                 (
@@ -831,7 +816,7 @@ mod test {
                 ),
                 (
                     Command::new(CommandType::Simple, "l2 l3 l4 l5"),
-                    Configuration::new_conf(vec![1], vec![], vec![2,3,4,5], vec![], false),
+                    Configuration::new_conf(vec![1], vec![], vec![2, 3, 4, 5], vec![], false),
                     vec![
                         (1, ProgressState::Probe, 0, 1),
                         (2, ProgressState::Probe, 0, 2),
@@ -850,12 +835,17 @@ mod test {
                 (
                     Command::new(CommandType::Simple, "r2 r3 r4 r5"),
                     Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
-                    vec![
-                        (1, ProgressState::Probe, 0, 1),
-                    ],
+                    vec![(1, ProgressState::Probe, 0, 1)],
                     "",
                 ),
             ],
+            // id 0 doesn't change any
+            vec![(
+                Command::new(CommandType::Simple, "v1 v0"),
+                Configuration::new_conf(vec![1], vec![], vec![], vec![], false),
+                vec![(1, ProgressState::Probe, 0, 0)],
+                "",
+            )],
         ];
 
         for (test_case, mut commands) in test_cases.drain(..).enumerate() {
