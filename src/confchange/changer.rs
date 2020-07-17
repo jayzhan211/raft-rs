@@ -405,14 +405,7 @@ mod test {
 
     #[test]
     fn test_confchange() {
-        let mut test_cases: Vec<
-            Vec<(
-                Command,
-                Configuration,
-                Vec<(u64, ProgressState, u64, u64)>,
-                &str,
-            )>,
-        > = vec![
+        let mut test_cases = vec![
             // joint autoleave
             vec![
                 (
