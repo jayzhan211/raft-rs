@@ -1,0 +1,14 @@
+{
+  "comment": "",
+  "data": [
+    {
+      "command": "committed",
+      "cfg": [1,2,3],
+      "cfgj": [],
+      "idx": [100,101,99],
+      "expected_idx": 100,
+      "vote": [],
+      "expected_vote": ""
+    }
+  ]
+}

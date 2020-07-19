@@ -18,6 +18,12 @@ pub enum VoteResult {
     Won,
 }
 
+impl fmt::Display for VoteResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
 /// Index is a Raft log position.
 #[derive(Default, Clone, Copy)]
 pub struct Index {

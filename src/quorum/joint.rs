@@ -91,8 +91,127 @@ impl Configuration {
 }
 
 #[cfg(test)]
-mod test {
-    use crate::{AckIndexer, HashMap, HashSet, Index, JointConfig, VoteResult};
+mod tests {
+    use crate::quorum::{AckIndexer, Index, VoteResult};
+    use crate::Result;
+    use crate::{HashMap, HashSet, JointConfig};
+    use serde::Deserialize;
+    use std::fs;
+
+    #[derive(Debug, Deserialize)]
+    struct MyValue {
+        command: String,
+        cfg: Vec<u64>,
+        cfgj: Vec<u64>,
+        idx: Vec<u64>,
+        expected_idx: u64,
+        vote: Vec<String>,
+        expected_vote: String,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct TestCase {
+        data: Vec<MyValue>,
+    }
+
+    #[test]
+    fn test_quorum_json() -> Result<()> {
+        let mut paths = vec![
+            "src/quorum/testdata/joint_commit.json",
+            "src/quorum/testdata/joint_vote.json",
+        ];
+        for path in paths.drain(..) {
+            let file = fs::read_to_string(path)?;
+            let mut test_case: TestCase = serde_json::from_str(&file).unwrap();
+            for (i, data) in test_case.data.drain(..).enumerate() {
+                let cfg_set: HashSet<u64> = data.cfg.into_iter().collect();
+                let cfgj_set: HashSet<u64> = data.cfgj.into_iter().collect();
+                let mut voters: Vec<u64> = cfg_set.union(&cfgj_set).into_iter().cloned().collect();
+                voters.sort();
+
+                match data.command.as_str() {
+                    "committed" => {
+                        assert_eq!(
+                            voters.len(),
+                            data.idx.len(),
+                            "[test_cases #{}] length of index mismatched.",
+                            i + 1
+                        );
+
+                        let mut l: AckIndexer = AckIndexer::default();
+
+                        for (i, id) in voters.drain(..).enumerate() {
+                            l.insert(
+                                id,
+                                Index {
+                                    index: data.idx[i],
+                                    group_id: 0,
+                                },
+                            );
+                        }
+                        let index1 = JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone())
+                            .committed_index(false, &l)
+                            .0;
+                        let index2 = JointConfig::new_joint(cfgj_set, cfg_set)
+                            .committed_index(false, &l)
+                            .0;
+
+                        assert_eq!(
+                            index1,
+                            index2,
+                            "test_cases #{}: Interchanging the majorities shouldn't make a difference",
+                            i + 1
+                        );
+                        assert_eq!(
+                            index1,
+                            data.expected_idx,
+                            "test_cases #{}: Mismatched Index, expected '{}', found '{}'",
+                            i + 1,
+                            data.expected_idx,
+                            index1
+                        );
+                    }
+                    "vote" => {
+                        assert_eq!(
+                            voters.len(),
+                            data.vote.len(),
+                            "test_cases #{}: length of vote mismatched.",
+                            i + 1
+                        );
+                        let mut l: HashMap<u64, bool> = HashMap::default();
+                        for (i, id) in voters.drain(..).enumerate() {
+                            match data.vote[i].as_str() {
+                                "y" => l.insert(id, true),
+                                "n" => l.insert(id, false),
+                                "?" => None,
+                                _ => {
+                                    panic!("unknown token, check file {}", path);
+                                }
+                            };
+                        }
+
+                        let vote_result1 = JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone())
+                            .vote_result(|id| l.get(&id).cloned());
+                        let vote_result2 = JointConfig::new_joint(cfgj_set, cfg_set)
+                            .vote_result(|id| l.get(&id).cloned());
+                        assert_eq!(
+                            vote_result1,
+                            vote_result2,
+                            "test_cases #{}: Interchanging the majorities shouldn't make a difference",
+                            i + 1,
+                        );
+                        assert_eq!(vote_result1.to_string(), data.expected_vote, "test_cases #{}: Mismatched VoteResult", i + 1);
+                    }
+                    _ => {
+                        panic!("unknown command, check file '{}'", path);
+                    }
+                }
+            }
+        }
+
+
+        Ok(())
+    }
 
     #[test]
     fn test_joint_commit_single_group() {

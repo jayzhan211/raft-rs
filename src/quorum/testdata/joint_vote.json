@@ -1,0 +1,14 @@
+{
+  "comment": "vote type: y => yes, n => no, ? => unknown type(not yet received)",
+  "data": [
+    {
+      "command": "vote",
+      "cfg": [1,2],
+      "cfgj": [3,4],
+      "idx": [],
+      "expected_idx": 0,
+      "vote": ["y","y","?","?"],
+      "expected_vote": "Pending"
+    }
+  ]
+}
