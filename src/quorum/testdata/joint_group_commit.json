@@ -2,21 +2,21 @@
   "comment": "",
   "data": [
     {
-      "command": "commit",
+      "command": "group_commit",
       "cfg": [1,2,3],
       "cfgj": [],
       "idx": [
         {
           "index": 100,
-          "group_id": 0
+          "group_id": 1
         },
         {
           "index": 101,
-          "group_id": 0
+          "group_id": 1
         },
         {
           "index": 99,
-          "group_id": 0
+          "group_id": 1
         }
       ],
       "expected_idx": 100,

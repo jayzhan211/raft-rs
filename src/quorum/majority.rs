@@ -150,7 +150,10 @@ impl DerefMut for Configuration {
 
 #[cfg(test)]
 mod test {
-    use crate::{AckIndexer, HashMap, HashSet, Index, JointConfig, MajorityConfig, VoteResult};
+    use crate::{HashMap, HashSet, JointConfig, MajorityConfig};
+
+    use crate::quorum::{AckIndexer, Index, VoteResult};
+
 
     #[test]
     fn test_majority_commit_single_group() {

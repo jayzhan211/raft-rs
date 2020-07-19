@@ -3,6 +3,7 @@
 pub mod joint;
 pub mod majority;
 
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -25,7 +26,7 @@ impl fmt::Display for VoteResult {
 }
 
 /// Index is a Raft log position.
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Deserialize)]
 pub struct Index {
     /// Raft log index
     pub index: u64,

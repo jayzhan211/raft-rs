@@ -103,8 +103,9 @@ mod tests {
         command: String,
         cfg: Vec<u64>,
         cfgj: Vec<u64>,
-        idx: Vec<u64>,
+        idx: Vec<Index>,
         expected_idx: u64,
+        expected_use_group_commit: bool,
         vote: Vec<String>,
         expected_vote: String,
     }
@@ -119,6 +120,7 @@ mod tests {
         let mut paths = vec![
             "src/quorum/testdata/joint_commit.json",
             "src/quorum/testdata/joint_vote.json",
+            "src/quorum/testdata/joint_group_commit.json",
         ];
         for path in paths.drain(..) {
             let file = fs::read_to_string(path)?;
@@ -130,24 +132,18 @@ mod tests {
                 voters.sort();
 
                 match data.command.as_str() {
-                    "committed" => {
+                    "commit" => {
                         assert_eq!(
                             voters.len(),
                             data.idx.len(),
-                            "[test_cases #{}] length of index mismatched.",
+                            "[test_cases #{}] length of Index mismatched.",
                             i + 1
                         );
 
                         let mut l: AckIndexer = AckIndexer::default();
 
                         for (i, id) in voters.drain(..).enumerate() {
-                            l.insert(
-                                id,
-                                Index {
-                                    index: data.idx[i],
-                                    group_id: 0,
-                                },
-                            );
+                            l.insert(id, data.idx[i]);
                         }
                         let index1 = JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone())
                             .committed_index(false, &l)
@@ -190,8 +186,9 @@ mod tests {
                             };
                         }
 
-                        let vote_result1 = JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone())
-                            .vote_result(|id| l.get(&id).cloned());
+                        let vote_result1 =
+                            JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone())
+                                .vote_result(|id| l.get(&id).cloned());
                         let vote_result2 = JointConfig::new_joint(cfgj_set, cfg_set)
                             .vote_result(|id| l.get(&id).cloned());
                         assert_eq!(
@@ -200,7 +197,39 @@ mod tests {
                             "test_cases #{}: Interchanging the majorities shouldn't make a difference",
                             i + 1,
                         );
-                        assert_eq!(vote_result1.to_string(), data.expected_vote, "test_cases #{}: Mismatched VoteResult", i + 1);
+                        assert_eq!(
+                            vote_result1.to_string(),
+                            data.expected_vote,
+                            "test_cases #{}: Mismatched VoteResult",
+                            i + 1
+                        );
+                    }
+                    "group_commit" => {
+                        assert_eq!(
+                            voters.len(),
+                            data.idx.len(),
+                            "[test_cases #{}] length of Index mismatched.",
+                            i + 1
+                        );
+
+                        let mut l: AckIndexer = AckIndexer::default();
+
+                        for (i, id) in voters.drain(..).enumerate() {
+                            l.insert(id, data.idx[i]);
+                        }
+                        let (index1, use_group_commit1) =
+                            JointConfig::new_joint(cfg_set.clone(), cfgj_set.clone())
+                                .committed_index(true, &l);
+                        let (index2, use_group_commit2) =
+                            JointConfig::new_joint(cfgj_set, cfg_set).committed_index(true, &l);
+
+                        assert_eq!((index1, use_group_commit1), (index2, use_group_commit2), "test_case #{}: Interchanging the majorities shouldn't make a difference.", i+1);
+                        assert_eq!(
+                            (index1, use_group_commit1),
+                            (data.expected_idx, data.expected_use_group_commit),
+                            "test_case #{}: Mismatched Result",
+                            i + 1
+                        );
                     }
                     _ => {
                         panic!("unknown command, check file '{}'", path);
@@ -208,8 +237,6 @@ mod tests {
                 }
             }
         }
-
-
         Ok(())
     }
 

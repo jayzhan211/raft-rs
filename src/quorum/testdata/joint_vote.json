@@ -7,6 +7,7 @@
       "cfgj": [3,4],
       "idx": [],
       "expected_idx": 0,
+      "expected_use_group_commit": false,
       "vote": ["y","y","?","?"],
       "expected_vote": "Pending"
     }
