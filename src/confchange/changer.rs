@@ -363,13 +363,15 @@ fn joint(cfg: &Configuration) -> bool {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::errors::Error::ConfChangeError;
     use crate::tracker::Configuration;
     use crate::Result;
     use crate::{default_logger, MapChange, ProgressState};
     use crate::{Changer, ProgressTracker};
     use raft_proto::parse_conf_change;
+    use serde::Deserialize;
+    use std::fs;
 
     enum CommandType {
         Simple,
@@ -401,6 +403,120 @@ mod test {
             CommandType::EnterJoint => c.enter_joint(false, &ccs),
             CommandType::LeaveJoint => c.leave_joint(),
         }
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct MyValue {
+        command_type: String,
+        argument: String,
+        incoming: Vec<u64>,
+        outgoing: Vec<u64>,
+        learners: Vec<u64>,
+        learners_next: Vec<u64>,
+        autoleave: bool,
+        expected: Vec<Expected>,
+        error: String,
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct Expected {
+        id: u64,
+        state: String,
+        matched: u64,
+        next_idx: u64,
+    }
+
+    impl Expected {
+        fn new(id: u64, state: ProgressState, matched: u64, next_idx: u64) -> Self {
+            Self {
+                id,
+                state: state.to_string(),
+                matched,
+                next_idx,
+            }
+        }
+    }
+
+    impl PartialEq for Expected {
+        fn eq(&self, other: &Expected) -> bool {
+            self.id == other.id
+                && self.state == other.state
+                && self.matched == other.matched
+                && self.next_idx == other.next_idx
+        }
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct TestCase {
+        test_cases: Vec<MyValue>,
+    }
+
+    fn execute_commands_json(
+        c: &mut Changer,
+        command_type: String,
+        argument: String,
+    ) -> Result<(Configuration, MapChange)> {
+        let ccs = parse_conf_change(&argument).unwrap();
+        match command_type.as_str() {
+            "simple" => c.simple(&ccs),
+            "enter-joint-autoleave" => c.enter_joint(true, &ccs),
+            "enter-joint" => c.enter_joint(false, &ccs),
+            "leave-joint" => c.leave_joint(),
+            _ => panic!("unknown command"),
+        }
+    }
+
+    #[test]
+    fn test_joint_autoleave() -> Result<()> {
+        let data = fs::read_to_string("src/confchange/testdata/joint_autoleave.json")?;
+        let mut testcase: TestCase = serde_json::from_str(&data).unwrap();
+
+        let mut tr = ProgressTracker::new(10, default_logger());
+        let mut c = Changer::new(&tr);
+        for (index, v) in testcase.test_cases.drain(..).enumerate() {
+            match execute_commands_json(&mut c, v.command_type, v.argument) {
+                Ok((conf, changes)) => {
+                    tr.apply_conf(conf, changes, index as u64);
+                    c = Changer::new(&tr);
+                    let conf: Configuration = c.tracker.conf().clone();
+                    let pr_map = c.tracker.progress();
+                    let mut prs: Vec<_> = pr_map
+                        .iter()
+                        .map(|(&id, pr)| Expected::new(id, pr.state, pr.matched, pr.next_idx))
+                        .collect();
+                    prs.sort_by(|a, b| a.id.cmp(&b.id));
+                    let expected_conf = Configuration::new_conf(
+                        v.incoming,
+                        v.outgoing,
+                        v.learners,
+                        v.learners_next,
+                        v.autoleave,
+                    );
+
+                    assert_eq!(
+                        conf, expected_conf,
+                        "[test-case #{}] configuration mismatched",
+                        index
+                    );
+                    assert_eq!(
+                        prs, v.expected,
+                        "[test-case #{}] progress-set mismatched",
+                        index
+                    )
+                }
+                Err(e) => {
+                    assert_eq!(
+                        e,
+                        ConfChangeError(String::from(v.error)),
+                        "[test-case #{}] error mismatched",
+                        index
+                    );
+                }
+            }
+        }
+
+        assert_eq!(2, 1 + 1);
+        Ok(())
     }
 
     #[test]

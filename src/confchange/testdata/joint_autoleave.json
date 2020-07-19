@@ -1,0 +1,96 @@
+{
+  "comment": "Test the autoleave argument to EnterJoint. It defaults to false in the datadriven tests.",
+  "test_cases": [
+    {
+      "command_type": "simple",
+      "argument": "v1",
+      "incoming": [1],
+      "outgoing": [],
+      "learners": [],
+      "learners_next": [],
+      "autoleave": false,
+      "expected": [
+        {
+          "id": 1,
+          "state": "Probe",
+          "matched": 0,
+          "next_idx": 0
+        }
+      ],
+      "error": ""
+    },
+    {
+      "comment": "Autoleave is reflected in the Config",
+      "command_type": "enter-joint-autoleave",
+      "argument": "v2 v3",
+      "incoming": [1, 2, 3],
+      "outgoing": [1],
+      "learners": [],
+      "learners_next": [],
+      "autoleave": true,
+      "expected": [
+        {
+          "id": 1,
+          "state": "Probe",
+          "matched": 0,
+          "next_idx": 0
+        },
+        {
+          "id": 2,
+          "state": "Probe",
+          "matched": 0,
+          "next_idx": 1
+        },
+        {
+          "id": 3,
+          "state": "Probe",
+          "matched": 0,
+          "next_idx": 1
+        }
+      ],
+      "error": ""
+    },
+    {
+      "comment": "Can't enter-joint twice, even if autoleave changes",
+      "command_type": "enter-joint",
+      "argument": "",
+      "incoming": [],
+      "outgoing": [],
+      "learners": [],
+      "learners_next": [],
+      "autoleave": false,
+      "expected": [],
+      "error": "configuration is already joint"
+    },
+    {
+      "command_type": "leave-joint",
+      "argument": "",
+      "incoming": [1,2,3],
+      "outgoing": [],
+      "learners": [],
+      "learners_next": [],
+      "autoleave": false,
+      "expected": [
+        {
+          "id": 1,
+          "state": "Probe",
+          "matched": 0,
+          "next_idx": 0
+        },
+        {
+          "id": 2,
+          "state": "Probe",
+          "matched": 0,
+          "next_idx": 1
+        },
+        {
+          "id": 3,
+          "state": "Probe",
+          "matched": 0,
+          "next_idx": 1
+        }
+      ],
+      "error": ""
+    }
+  ]
+}
