@@ -140,22 +140,22 @@ impl Configuration {
         }
 
         // (idx, id, bar)
-        // because we dont need group id here, so we save index: u64 instead of Index
         // bar: length of bar displayed for this tup
-        let mut info: Vec<(u64, u64, usize)> = vec![];
+        let mut info: Vec<(Index, u64, usize)> = vec![];
         for id in &self.voters {
-            let idx = l.acked_index(*id).unwrap_or_default().index;
+            let idx = l.acked_index(*id).unwrap_or_default();
 
             info.push((idx, *id, 0));
         }
 
-        info.sort_by(|a, b| a.cmp(&b));
+        // compare index then id (both ascending)
+        info.sort_by(|a, b| a.0.index.cmp(&b.0.index).then(a.1.cmp(&b.1)));
 
         println!("info: {:?}", info);
 
         // let mut bar_count = vec![0; n];
         for i in 0..n {
-            if i > 0 && info[i - 1].0 < info[i].0 {
+            if i > 0 && info[i - 1].0.index < info[i].0.index {
                 info[i].2 = i;
             }
         }
@@ -169,7 +169,7 @@ impl Configuration {
         buf.push_str(&(" ".repeat(n) + "    idx\n"));
 
         for &(idx, id, bar) in &info {
-            if idx == 0 {
+            if idx.index == 0 {
                 buf.push_str(&(String::from("?") + " ".repeat(n).as_str()));
             } else {
                 buf.push_str(&("x".repeat(bar) + ">" + " ".repeat(n - bar).as_str()));

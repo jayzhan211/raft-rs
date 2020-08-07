@@ -6,7 +6,7 @@ pub mod joint;
 pub mod majority;
 
 use std::collections::HashMap;
-use std::fmt::{self, Debug, Display, Formatter};
+use std::fmt::{self, Debug, Formatter, Display};
 
 /// VoteResult indicates the outcome of a vote.
 #[derive(Clone, Copy, PartialEq)]
@@ -39,7 +39,7 @@ impl Debug for VoteResult {
 }
 
 /// Index is a Raft log position.
-#[derive(Default, Clone, Copy, PartialOrd, PartialEq)]
+#[derive(Default, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Index {
     /// Raft log index
     pub index: u64,

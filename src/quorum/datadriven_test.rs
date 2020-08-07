@@ -260,3 +260,37 @@ fn test_data_driven_quorum() -> Result<()> {
     run_test("src/quorum/testdata", test_quorum, &logger)?;
     Ok(())
 }
+
+
+#[test]
+fn func() {
+    let mut a = vec![];
+    a.push(Index {
+        index: 9,
+        group_id: 10,
+    });
+    a.push(Index {
+        index: 9,
+        group_id: 9,
+    });
+    a.push(Index {
+        index: 10,
+        group_id: 5,
+    });
+    a.push(Index {
+        index: 10,
+        group_id: 0,
+    });
+    a.push(Index {
+        index: 20,
+        group_id: 0,
+    });
+
+
+    a.sort_by(|a,b|a.group_id.cmp(&b.group_id).then(a.index.cmp(&b.index)));
+    println!("a: {:?}", a);
+    a.sort_by(|a,b|b.group_id.cmp(&a.group_id).then(a.index.cmp(&b.index)));
+    println!("a: {:?}", a);
+    a.sort_by(|a,b|a.index.cmp(&b.index).then(b.group_id.cmp(&a.group_id)));
+    println!("a: {:?}", a);
+}
