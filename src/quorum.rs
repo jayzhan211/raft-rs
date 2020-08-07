@@ -1,9 +1,10 @@
 // Copyright 2020 TiKV Project Authors. Licensed under Apache-2.0.
 
+#[cfg(test)]
+pub mod datadriven_test;
 pub mod joint;
 pub mod majority;
 
-use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Display, Formatter};
 
@@ -26,7 +27,7 @@ impl fmt::Display for VoteResult {
 }
 
 /// Index is a Raft log position.
-#[derive(Default, Clone, Copy, Deserialize)]
+#[derive(Default, Clone, Copy)]
 pub struct Index {
     /// Raft log index
     pub index: u64,
