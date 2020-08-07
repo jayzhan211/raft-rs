@@ -130,6 +130,55 @@ impl Configuration {
             VoteResult::Lost
         }
     }
+
+    /// add doc
+    pub fn describe(&self, l: &impl AckedIndexer) -> String {
+        let n = self.voters.len();
+
+        if n == 0 {
+            return "<empty majority quorum>".to_string();
+        }
+
+        // (idx, id, bar)
+        // because we dont need group id here, so we save index: u64 instead of Index
+        // bar: length of bar displayed for this tup
+        let mut info: Vec<(u64, u64, usize)> = vec![];
+        for id in &self.voters {
+            let idx = l.acked_index(*id).unwrap_or_default().index;
+
+            info.push((idx, *id, 0));
+        }
+
+        info.sort_by(|a, b| a.cmp(&b));
+
+        println!("info: {:?}", info);
+
+        // let mut bar_count = vec![0; n];
+        for i in 0..n {
+            if i > 0 && info[i - 1].0 < info[i].0 {
+                info[i].2 = i;
+            }
+        }
+
+        info.sort_by(|a, b| a.1.cmp(&b.1));
+
+        println!("info: {:?}", info);
+
+        let mut buf = String::new();
+
+        buf.push_str(&(" ".repeat(n) + "    idx\n"));
+
+        for &(idx, id, bar) in &info {
+            if idx == 0 {
+                buf.push_str(&(String::from("?") + " ".repeat(n).as_str()));
+            } else {
+                buf.push_str(&("x".repeat(bar) + ">" + " ".repeat(n - bar).as_str()));
+            }
+            buf.push_str(&format!(" {:5}    (id={})\n", idx, id));
+        }
+
+        buf
+    }
 }
 
 impl Deref for Configuration {

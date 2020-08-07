@@ -67,11 +67,19 @@ fn test_data_driven_quorum() -> Result<()> {
         }
 
         // After parsing arguments
-        // Collect votes
+        // Collect votes, remain order ids then idsj and remove the duplicate
+
+        let mut voters = ids.clone();
+        for id in &idsj {
+            if !voters.contains(id) {
+                voters.push(*id);
+            }
+        }
+
         let c_set: HashSet<u64> = ids.into_iter().collect();
         let cj_set: HashSet<u64> = idsj.into_iter().collect();
-        let mut voters: Vec<u64> = c_set.union(&cj_set).into_iter().cloned().collect();
-        voters.sort();
+
+        println!("voters: {:?}, idxs: {:?}", voters, idxs);
 
         // buffer for expected value
         let mut buf = String::new();
@@ -105,7 +113,7 @@ fn test_data_driven_quorum() -> Result<()> {
 
                     let cc = JointConfig::new_joint(c_set.clone(), cj_set.clone());
 
-                    // buf.push_str(cc.describe);
+                    buf.push_str(&cc.describe(&l));
 
                     let idx = cc.committed_index(false, &l).0;
 
@@ -124,7 +132,8 @@ fn test_data_driven_quorum() -> Result<()> {
                     let c = MajorityConfig::new(c_set.clone());
 
                     let idx = c.committed_index(false, &l).0;
-                    //fmt.Fprintf(&buf, c.Describe(l))
+
+                    buf.push_str(&c.describe(&l));
 
                     let a_idx = JointConfig::new_joint(c_set.clone(), HashSet::default())
                         .committed_index(false, &l)
@@ -210,7 +219,7 @@ fn test_data_driven_quorum() -> Result<()> {
                         VoteResult::Won => {
                             l.insert(id, true);
                         }
-                        VoteResult::Pending => {},
+                        VoteResult::Pending => {}
                         VoteResult::Lost => {
                             l.insert(id, false);
                         }
@@ -218,8 +227,13 @@ fn test_data_driven_quorum() -> Result<()> {
                 }
 
                 if joint {
-                    let r = JointConfig::new_joint(c_set.clone(), cj_set.clone()).vote_result(|id| l.get(&id).cloned());
-                    let a_r = JointConfig::new_joint(cj_set.clone(), c_set.clone()).vote_result(|id| l.get(&id).cloned());
+                    let r = JointConfig::new_joint(c_set.clone(), cj_set.clone())
+                        .vote_result(|id| l.get(&id).cloned());
+                    let a_r = JointConfig::new_joint(cj_set.clone(), c_set.clone())
+                        .vote_result(|id| l.get(&id).cloned());
+
+                    println!("r: {}", r);
+                    println!("r: {:?}", r);
 
                     if a_r != r {
                         buf.push_str(&format!("{} <-- via symmetry\n", a_r));
@@ -228,6 +242,10 @@ fn test_data_driven_quorum() -> Result<()> {
                 } else {
                     let c = MajorityConfig::new(c_set.clone());
                     let r = c.vote_result(|id| l.get(&id).cloned());
+
+                    println!("r: {}", r);
+                    println!("r: {:?}", r);
+
                     buf.push_str(&format!("{}\n", r));
                 }
             }

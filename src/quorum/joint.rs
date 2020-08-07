@@ -12,12 +12,14 @@ use std::cmp;
 pub struct Configuration {
     pub(crate) incoming: MajorityConfig,
     pub(crate) outgoing: MajorityConfig,
+    ids: HashSet<u64>,
 }
 
 impl Configuration {
     /// Creates a new configuration using the given IDs.
-    pub fn new(voters: HashSet<u64>) -> Configuration {
-        Configuration {
+    pub fn new(voters: HashSet<u64>) -> Self {
+        Self {
+            ids: voters.clone(),
             incoming: MajorityConfig::new(voters),
             outgoing: MajorityConfig::default(),
         }
@@ -26,16 +28,18 @@ impl Configuration {
     /// Creates a new configuration using the given IDs.
     pub fn new_joint(incoming: HashSet<u64>, outgoing: HashSet<u64>) -> Self {
         Self {
+            ids: incoming.union(&outgoing).into_iter().cloned().collect(),
             incoming: MajorityConfig::new(incoming),
             outgoing: MajorityConfig::new(outgoing),
         }
     }
 
     /// Creates an empty configuration with given capacity.
-    pub fn with_capacity(cap: usize) -> Configuration {
-        Configuration {
+    pub fn with_capacity(cap: usize) -> Self {
+        Self {
             incoming: MajorityConfig::with_capacity(cap),
             outgoing: MajorityConfig::default(),
+            ids: HashSet::default(),
         }
     }
 
@@ -89,7 +93,10 @@ impl Configuration {
         self.incoming.contains(&id) || self.outgoing.contains(&id)
     }
 
-    pub fn describe(&self, l:)
+    /// add doc
+    pub fn describe(&self, l: &impl AckedIndexer) -> String {
+        MajorityConfig::new(self.ids.clone()).describe(l)
+    }
 }
 
 // #[cfg(test)]

@@ -163,3 +163,4 @@ VoteLost
 vote cfg=(1,2,3) cfgj=(2,3,4) votes=(y,y,n,y)
 ----
 VoteWon
+

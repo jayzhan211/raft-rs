@@ -137,37 +137,33 @@ impl<'a> TestDataReader<'a> {
         if let Some((_, line)) = self.scanner.next() {
             if line == "----" {
                 loop {
-                    let mut line = self.scanner.next().unwrap().1.trim().to_string();
+                    let line = self.scanner.next().unwrap().1;
                     if line == "----" {
-                        let mut line2 = self.scanner.next().unwrap().1.trim().to_string();
+                        let line2 = self.scanner.next().unwrap().1;
                         if line2 == "----" {
-                            let line3 = self.scanner.next().unwrap().1.trim();
-                            assert!(
+                            let line3 = self.scanner.next().unwrap().1;
+                            debug_assert!(
                                 line3.is_empty(),
                                 "expected an blank line after second separator, found '{}'",
                                 line3
                             );
+
                             break;
                         }
-                        line2 += "\n";
-                        self.data.expected.push_str(&line2);
+                        self.data.expected.push_str(&(line2.to_owned() + "\n"));
                     }
-                    line += "\n";
-                    self.data.expected.push_str(&line);
+                    self.data.expected.push_str(&(line.to_owned() + "\n"));
                 }
             } else {
                 // Read the expected value after separator
-                let mut l = line.trim().to_string();
-                while !l.is_empty() {
-                    l += "\n";
-                    self.data.expected.push_str(&l);
-                    l = self
+                let mut line = line;
+                while !line.trim().is_empty() {
+                    self.data.expected.push_str(&(line.to_owned() + "\n"));
+                    line = self
                         .scanner
                         .next()
                         .expect("expect to get empty line as the terminator.")
-                        .1
-                        .trim()
-                        .to_string();
+                        .1;
                 }
             }
         }

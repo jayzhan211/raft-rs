@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Debug, Display, Formatter};
 
 /// VoteResult indicates the outcome of a vote.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum VoteResult {
     /// Pending indicates that the decision of the vote depends on future
     /// votes, i.e. neither "yes" or "no" has reached quorum yet.
@@ -21,13 +21,25 @@ pub enum VoteResult {
 }
 
 impl fmt::Display for VoteResult {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        match self {
+            VoteResult::Won => write!(f, "VoteWon"),
+            VoteResult::Lost => write!(f, "VoteLost"),
+            VoteResult::Pending => write!(f, "VotePending"),
+        }
+    }
+}
+
+impl Debug for VoteResult {
+    #[inline]
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Display::fmt(self, f)
     }
 }
 
 /// Index is a Raft log position.
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialOrd, PartialEq)]
 pub struct Index {
     /// Raft log index
     pub index: u64,
