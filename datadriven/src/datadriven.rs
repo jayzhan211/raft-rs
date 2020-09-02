@@ -9,7 +9,7 @@ use regex::Regex;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The main function to run tests
 ///
@@ -84,21 +84,18 @@ use std::path::Path;
 /// If there are no blank line in expected value, it will be overwritten with one separator,
 /// instead of double separator, vice versa.
 ///
-pub fn run_test<F>(path: &str, f: F, rewrite: bool, logger: &slog::Logger) -> Result<()>
+pub fn run_test<F>(path: &PathBuf, f: F, rewrite: bool, logger: &slog::Logger) -> Result<()>
 where
-    F: FnOnce(&TestData) -> String + Copy,
+    F: FnMut(&TestData) -> String,
 {
-    let files = get_dirs_or_file(path)?;
+    let content = fs::read_to_string(path)?;
 
-    for path in &files {
-        let content = fs::read_to_string(path)?;
-        if let Some(rewrite_data) = run_test_internal(path, &content, f, rewrite, logger)? {
-            let mut file = OpenOptions::new().write(true).truncate(true).open(path)?;
-            file.write_all(rewrite_data.as_bytes())?;
-            file.sync_data()?;
-        } else {
-            // test mode, skip rewriting data
-        }
+    if let Some(rewrite_data) = run_test_internal(path, &content, f, rewrite, logger)? {
+        let mut file = OpenOptions::new().write(true).truncate(true).open(path)?;
+        file.write_all(rewrite_data.as_bytes())?;
+        file.sync_data()?;
+    } else {
+        // test mode, skip rewriting data
     }
 
     Ok(())
@@ -107,18 +104,18 @@ where
 fn run_test_internal<F, P>(
     source_name: P,
     content: &str,
-    f: F,
+    mut f: F,
     rewrite: bool,
     logger: &slog::Logger,
 ) -> Result<Option<String>>
 where
-    F: FnOnce(&TestData) -> String + Copy,
+    F: FnMut(&TestData) -> String,
     P: AsRef<Path>,
 {
     let mut r = TestDataReader::new(source_name, content, rewrite, logger);
 
     while r.next()? {
-        run_directive(&mut r, f)?;
+        run_directive(&mut r, &mut f)?;
     }
 
     // remove redundant '\n'
@@ -134,9 +131,9 @@ where
 
 // run_directive runs just one directive in the input.
 //
-fn run_directive<F>(r: &mut TestDataReader, f: F) -> Result<()>
+fn run_directive<F>(r: &mut TestDataReader, mut f: F) -> Result<()>
 where
-    F: FnOnce(&TestData) -> String,
+    F: FnMut(&TestData) -> String,
 {
     let mut actual = f(&r.data);
 
@@ -164,6 +161,31 @@ where
             // Here actual already ends in \n so emit adds a blank line.
             r.emit(&actual);
         }
+    }
+
+    Ok(())
+}
+
+/// Walk ges through directory or files.
+///
+/// This can be used in conjunction with run_test.
+/// For example:
+/// ```ignore
+/// datadriven::walk(path, |path|{
+///     // initialize per-test state
+///     datadriven::run_test(path, |data| {
+///         String::new()    
+///     }, rewrite, &Logger)
+/// })
+/// ```
+pub fn walk<F>(path: &str, mut f: F) -> Result<()>
+where
+    F: FnMut(&PathBuf) -> Result<()>,
+{
+    let files = get_dirs_or_file(path)?;
+
+    for path in &files {
+        f(path)?
     }
 
     Ok(())

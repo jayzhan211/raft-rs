@@ -1,6 +1,6 @@
 use crate::datadriven::{has_blank_line, run_test, run_test_internal};
 use crate::test_data::TestData;
-use crate::{default_logger, get_dirs_or_file};
+use crate::{default_logger, get_dirs_or_file, walk};
 use anyhow::Result;
 use std::cmp;
 use std::fs::{read_to_string, OpenOptions};
@@ -206,13 +206,9 @@ fn test_datadriven() -> Result<()> {
     let logger = default_logger();
     let rewrite = false;
 
-    run_test(
-        "src/testdata/datadriven",
-        fibonacci_or_factorial_or_sum,
-        rewrite,
-        &logger,
-    )?;
-    Ok(())
+    walk("src/testdata/datadriven", |path| {
+        run_test(path, fibonacci_or_factorial_or_sum, rewrite, &logger)
+    })
 }
 
 #[test]
@@ -220,21 +216,38 @@ fn test_unknown_data() -> Result<()> {
     let logger = default_logger();
     let rewrite = false;
 
-    let e = run_test(
-        "src/testdata/unknown_data_1.txt",
-        fibonacci_or_factorial_or_sum,
-        rewrite,
-        &logger,
-    );
+    let e = walk("src/testdata/unknown_data_1.txt", |path| {
+        run_test(path, fibonacci_or_factorial_or_sum, rewrite, &logger)
+    });
+
     assert!(e.is_err());
-    let e = run_test(
-        "src/testdata/unknown_data_2.txt",
-        fibonacci_or_factorial_or_sum,
-        rewrite,
-        &logger,
-    );
+
+    let e = walk("src/testdata/unknown_data_2.txt", |path| {
+        run_test(path, fibonacci_or_factorial_or_sum, rewrite, &logger)
+    });
+
     assert!(e.is_err());
+
     Ok(())
+}
+
+#[test]
+fn test_modifies() -> Result<()> {
+    let logger = default_logger();
+    let rewrite = false;
+
+    walk("src/testdata/modifies", |path| {
+        let mut num = 0;
+        run_test(
+            path,
+            |_| {
+                num += 1;
+                format!("{}", num)
+            },
+            rewrite,
+            &logger,
+        )
+    })
 }
 
 #[test]
