@@ -105,11 +105,3 @@ pub fn restore(tracker: &mut ProgressTracker, next_idx: u64, cs: &ConfState) -> 
     }
     Ok(())
 }
-
-#[cfg(test)]
-mod test {
-    #[test]
-    fn test_restore() {
-        assert_eq!(2, 1 + 1);
-    }
-}
