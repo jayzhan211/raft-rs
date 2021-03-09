@@ -1555,9 +1555,18 @@ impl<T: Storage> Raft<T> {
                 "last index" => m.reject_hint,
                 "from" => m.from,
                 "index" => m.index,
+                "last term" => m.log_term,
             );
 
             if pr.maybe_decr_to(m.index, m.reject_hint, m.request_snapshot) {
+                if m.log_term > 0 {
+                    let conflict_index =
+                        self.raft_log.find_conflict_by_term(pr.next_idx, m.log_term);
+                    if conflict_index > 0 {
+                        pr.next_idx = conflict_index + 1
+                    }
+                }
+
                 debug!(
                     self.r.logger,
                     "decreased progress of {}",
@@ -2279,6 +2288,9 @@ impl<T: Storage> Raft<T> {
             to_send.index = m.index;
             to_send.reject = true;
             to_send.reject_hint = self.raft_log.last_index();
+            // to_send.reject_hint = cmp::min(self.raft_log.last_index(), m.index);
+            // to_send.log_term = self.raft_log.term(to_send.reject_hint).unwrap();
+            // self.send(to_send);
         }
 
         to_send.set_commit(self.raft_log.committed);

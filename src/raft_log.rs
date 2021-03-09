@@ -194,6 +194,19 @@ impl<T: Storage> RaftLog<T> {
         0
     }
 
+    /// Finds the index of the conflict with the given term
+    ///
+    /// It returns the first index that the term is not
+    /// greater than given term
+    pub fn find_conflict_by_term(&self, mut index: u64, term: u64) -> u64 {
+        let mut conflict_index = 0;
+        while self.term(index).ok().map_or(false, |t| t > term) {
+            index -= 1;
+            conflict_index = index;
+        }
+        conflict_index
+    }
+
     /// Answers the question: Does this index belong to this term?
     pub fn match_term(&self, idx: u64, term: u64) -> bool {
         self.term(idx).map(|t| t == term).unwrap_or(false)
